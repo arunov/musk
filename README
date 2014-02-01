@@ -1,29 +1,35 @@
-= Set the environment variables =
+1. Set the environment variables
+   Following tools have been installed in ~vagrawal/cse502-tools/bin:
+     - verilator
+     - gtkwave
 
-Following tools have been installed in ~vagrawal/cse502-tools/bin:
- - verilator
- - gtkwave
+   To use these tools, you need to set the environment variables - LD_LIBRARY_PATH and PATH
 
-To use these tools, you need to set the environment variables - LD_LIBRARY_PATH and PATH
+   a) LD_LIBRARY_PATH as /usr/local/packages/mpc-1.0.1/lib:/usr/local/packages/mpfr-3.1.2/lib:/usr/local/packages/gmp-5.1.3/lib:/usr/local/packages/gcc-4.8.1/lib64:/usr/local/lib
+   For csh,
+     setenv LD_LIBRARY_PATH /usr/local/packages/mpc-1.0.1/lib:/usr/local/packages/mpfr-3.1.2/lib:/usr/local/packages/gmp-5.1.3/lib:/usr/local/packages/gcc-4.8.1/lib64:/usr/local/lib
 
-1. LD_LIBRARY_PATH as
-/usr/local/packages/mpc-1.0.1/lib:/usr/local/packages/mpfr-3.1.2/lib:/usr/local/packages/gmp-5.1.3/lib:/usr/local/packages/gcc-4.8.1/lib64:/usr/local/lib
+   For bash, 
+     export LD_LIBRARY_PATH=/usr/local/packages/mpc-1.0.1/lib:/usr/local/packages/mpfr-3.1.2/lib:/usr/local/packages/gmp-5.1.3/lib:/usr/local/packages/gcc-4.8.1/lib64:/usr/local/lib
 
-For csh,
+   b) PATH as /home/stufs1/vagrawal/cse502-tools/bin:$PATH
+   For csh, 
+     setenv PATH /home/stufs1/vagrawal/cse502-tools/bin:$PATH
 
-setenv LD_LIBRARY_PATH /usr/local/packages/mpc-1.0.1/lib:/usr/local/packages/mpfr-3.1.2/lib:/usr/local/packages/gmp-5.1.3/lib:/usr/local/packages/gcc-4.8.1/lib64:/usr/local/lib
+   For bash,
+     export PATH=/home/stufs1/vagrawal/cse502-tools/bin:$PATH
 
-For bash,
+2. Building/Running the code
+   a) Following are the commands to build and run the code
+   make		// build code
+   make run	// run code
 
-export
-LD_LIBRARY_PATH=/usr/local/packages/mpc-1.0.1/lib:/usr/local/packages/mpfr-3.1.2/lib:/usr/local/packages/gmp-5.1.3/lib:/usr/local/packages/gcc-4.8.1/lib64:/usr/local/lib
+   The result of running the code will be a 'trace.vcd' waveform file. You can view it using gtkwave (see instructions below).
 
-2. PATH as /home/stufs1/vagrawal/cse502-tools/bin:$PATH
+   b) To change the program binary which you are decoding
+   - Edit the following line in Makefile
+     RUNELF=$(PWD)/prog2:w
 
-For csh,
-
-setenv PATH /home/stufs1/vagrawal/cse502-tools/bin:$PATH
-
-For bash,
-
-export PATH=/home/stufs1/vagrawal/cse502-tools/bin:$PATH
+3. Viewing the trace.vcd waveform
+   To view the trace.vcd waveform, you can log on to server using -Y option. You can then view the waveforms using the following command:
+     gtkwave trace.vcd
