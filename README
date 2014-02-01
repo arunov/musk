@@ -1,0 +1,29 @@
+= Set the environment variables =
+
+Following tools have been installed in ~vagrawal/cse502-tools/bin:
+ - verilator
+ - gtkwave
+
+To use these tools, you need to set the environment variables - LD_LIBRARY_PATH and PATH
+
+1. LD_LIBRARY_PATH as
+/usr/local/packages/mpc-1.0.1/lib:/usr/local/packages/mpfr-3.1.2/lib:/usr/local/packages/gmp-5.1.3/lib:/usr/local/packages/gcc-4.8.1/lib64:/usr/local/lib
+
+For csh,
+
+setenv LD_LIBRARY_PATH /usr/local/packages/mpc-1.0.1/lib:/usr/local/packages/mpfr-3.1.2/lib:/usr/local/packages/gmp-5.1.3/lib:/usr/local/packages/gcc-4.8.1/lib64:/usr/local/lib
+
+For bash,
+
+export
+LD_LIBRARY_PATH=/usr/local/packages/mpc-1.0.1/lib:/usr/local/packages/mpfr-3.1.2/lib:/usr/local/packages/gmp-5.1.3/lib:/usr/local/packages/gcc-4.8.1/lib64:/usr/local/lib
+
+2. PATH as /home/stufs1/vagrawal/cse502-tools/bin:$PATH
+
+For csh,
+
+setenv PATH /home/stufs1/vagrawal/cse502-tools/bin:$PATH
+
+For bash,
+
+export PATH=/home/stufs1/vagrawal/cse502-tools/bin:$PATH
