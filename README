@@ -28,8 +28,8 @@
 
    b) To change the program binary which you are decoding
    - Edit the following line in Makefile
-     RUNELF=$(PWD)/prog2:w
+     RUNELF=$(PWD)/prog2
 
 3. Viewing the trace.vcd waveform
-   To view the trace.vcd waveform, you can log on to server using -Y option. You can then view the waveforms using the following command:
+   You can login to the server using the -Y option. You can view waveforms using the following command:
      gtkwave trace.vcd
