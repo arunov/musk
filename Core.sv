@@ -77,6 +77,9 @@ module Core (
 			// remove the following two lines. They are only to perform a successful compilation, in the absence of your code.
 			encoding = None;
 			if (decode_bytes == 0 || encoding == 0) ;
+
+			// cse502 : following is an example of how to finish the simulation
+			if (decode_bytes == 0 && fetch_state == fetch_idle) $finish;
 		end else begin
 			bytes_decoded_this_cycle = 0;
 		end
