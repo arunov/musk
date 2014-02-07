@@ -3,7 +3,6 @@ module Core (
 ,	/* verilator lint_off UNDRIVEN */ /* verilator lint_off UNUSED */ Sysbus bus /* verilator lint_on UNUSED */ /* verilator lint_on UNDRIVEN */
 );
 	enum { fetch_idle, fetch_waiting, fetch_active } fetch_state;
-	enum { None, Encoding_RM, Encoding_MR, Encoding_MIb, Encoding_MIw, Encoding_I, Encoding_M, Encoding_D, Encoding_RMI } encoding;
 	logic[63:0] fetch_rip;
 	logic[0:2*64*8-1] decode_buffer; // NOTE: buffer bits are left-to-right in increasing order
 	logic[5:0] fetch_skip;
@@ -41,7 +40,7 @@ module Core (
 			bus.reqtag <= { bus.READ, bus.MEMORY, 8'b0 };
 
 			if (bus.respcyc) begin
-				assert(!send_fetch_req);
+				assert(!send_fetch_req) else $fatal;
 				fetch_state <= fetch_active;
 				fetch_rip <= fetch_rip + 8;
 				if (fetch_skip > 0) begin
@@ -55,7 +54,7 @@ module Core (
 				if (fetch_state == fetch_active) begin
 					fetch_state <= fetch_idle;
 				end else if (bus.reqack) begin
-					assert(fetch_state == fetch_idle);
+					assert(fetch_state == fetch_idle) else $fatal;
 					fetch_state <= fetch_waiting;
 				end
 			end
@@ -74,9 +73,8 @@ module Core (
 	always_comb begin
 		if (can_decode) begin : decode_block
 			// cse502 : Decoder here
-			// remove the following two lines. They are only to perform a successful compilation, in the absence of your code.
-			encoding = None;
-			if (decode_bytes == 0 || encoding == 0) ;
+			// remove the following line. It is only here to allow successful compilation in the absence of your code.
+			if (decode_bytes == 0) ;
 
 			// cse502 : following is an example of how to finish the simulation
 			if (decode_bytes == 0 && fetch_state == fetch_idle) $finish;

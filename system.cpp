@@ -14,9 +14,11 @@
 
 using namespace std;
 
+#ifndef be32toh
 #define be32toh(x)      ((u_int32_t)ntohl((u_int32_t)(x)))
+#endif
 
-static __inline__ u_int64_t be64toh(u_int64_t __x) { return (((u_int64_t)be32toh(__x & (u_int64_t)0xFFFFFFFFULL)) << 32) | ((u_int64_t)be32toh((__x & (u_int64_t)0xFFFFFFFF00000000ULL) >> 32)); }
+static __inline__ u_int64_t cse502_be64toh(u_int64_t __x) { return (((u_int64_t)be32toh(__x & (u_int64_t)0xFFFFFFFFULL)) << 32) | ((u_int64_t)be32toh((__x & (u_int64_t)0xFFFFFFFF00000000ULL) >> 32)); }
 
 uint64_t System::load_elf(const char* filename) {
 	int fd = open(filename,O_RDONLY);
@@ -54,8 +56,8 @@ void System::dram_read_complete(unsigned id, uint64_t address, uint64_t clock_cy
 	std::map<uint64_t, int>::iterator tag = addr_to_tag.find(address);
 	assert(tag != addr_to_tag.end());
 	for(int i=0; i<64; i+=8) {
-		//cerr << "fill data from " << std::hex << (address+(i&63)) <<  ": " << tx_queue.rbegin()->first << endl;
-		tx_queue.push_back(make_pair(be64toh(*((uint64_t*)(&ram[address+(i&63)]))),tag->second));
+		//cerr << "fill data from " << std::hex << (address+(i&63)) <<  ": " << tx_queue.rbegin()->first << " on tag " << tag->second << endl;
+		tx_queue.push_back(make_pair(cse502_be64toh(*((uint64_t*)(&ram[address+(i&63)]))),tag->second));
 	}
 	addr_to_tag.erase(tag);
 }
@@ -101,19 +103,19 @@ void System::tick(int clk) {
 	}
 
 	dramsim->update();
-	if (rx_count) --rx_count;
+	if (!tx_queue.empty() && top->respack) tx_queue.pop_front();
 	if (!tx_queue.empty()) {
 		top->respcyc = 1;
 		top->resp = tx_queue.begin()->first;
 		top->resptag = tx_queue.begin()->second;
-		// note: ignores respack
-		tx_queue.pop_front();
+		//cerr << "responding data " << top->resp << " on tag " << std::hex << top->resptag << endl;
 	} else {
 		top->respcyc = 0;
 		top->resp = 0xaaaaaaaaaaaaaaaaULL;
 		top->resptag = 0xaaaa;
 	}
 
+	if (rx_count) --rx_count;
 	if (top->reqcyc) {
 		if (rx_count) return;
 		bool isWrite = ((top->reqtag >> 12) & 1) == WRITE;
@@ -129,8 +131,8 @@ void System::tick(int clk) {
 			assert(
 				dramsim->addTransaction(isWrite, xfer_addr)
 			);
-			//cerr << "add transaction " << std::hex << xfer_addr << endl;
-			if (!isWrite) addr_to_tag[xfer_addr] = top->reqtag & 0xff;
+			//cerr << "add transaction " << std::hex << xfer_addr << " on tag " << top->reqtag << endl;
+			if (!isWrite) addr_to_tag[xfer_addr] = top->reqtag;
 			break;
 		default:
 			assert(0);
