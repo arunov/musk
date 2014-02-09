@@ -43,6 +43,8 @@ uint64_t System::load_elf(const char* filename) {
 			//cerr << "section flags " << hex << p->p_flags << endl;
 		} else if (p->p_type == PT_GNU_STACK) {
 			// do nothing
+		} else if (p->p_type == 0x4) {
+			// do nothing
 		} else {
 			cerr << "Unexpected ELF header " << p->p_type << endl;
 			exit(-1);
