@@ -2,6 +2,9 @@ module Core (
 	input[63:0] entry
 ,	/* verilator lint_off UNDRIVEN */ /* verilator lint_off UNUSED */ Sysbus bus /* verilator lint_on UNUSED */ /* verilator lint_on UNDRIVEN */
 );
+
+	`include "Decoder.sv"
+
 	enum { fetch_idle, fetch_waiting, fetch_active } fetch_state;
 	logic[63:0] fetch_rip;
 	logic[0:2*64*8-1] decode_buffer; // NOTE: buffer bits are left-to-right in increasing order
@@ -73,8 +76,7 @@ module Core (
 	always_comb begin
 		if (can_decode) begin : decode_block
 			// cse502 : Decoder here
-			// remove the following line. It is only here to allow successful compilation in the absence of your code.
-			if (decode_bytes == 0) ;
+			bytes_decoded_this_cycle = decode(decode_bytes);
 
 			// cse502 : following is an example of how to finish the simulation
 			if (decode_bytes == 0 && fetch_state == fetch_idle) $finish;
