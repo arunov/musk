@@ -1,7 +1,7 @@
 
 typedef logic[0:32*8-1] opcode_name_t;
 typedef logic[0:9*8-1] opcode_mode_t;
-typedef enum {OP_MPX_NIL, OP_MPX_66H, OP_MPX_F2H, OP_MPX_F3H} opcode_mprefix_t;
+typedef enum {OP_MPX_NIL = 0, OP_MPX_66H, OP_MPX_F2H, OP_MPX_F3H} opcode_mprefix_t;
 
 typedef struct packed {
 	opcode_name_t name;
@@ -17,6 +17,8 @@ typedef struct packed {
 	logic[0:7] rex_prefix;
 	opcode_struct_t opcode_struct;
 } fat_instruction_t;
+
+`include "OpcodeMap1.sv"
 
 function automatic logic is_lock_repeat_prefix(logic[0:7] val);
 	return val == 'hF0 || val == 'hF3 || val == 'hF2;
