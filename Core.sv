@@ -19,7 +19,7 @@ module Core (
 		end else if (bus.reqack) begin
 			send_fetch_req = 0; // hack: still idle, but already got ack (in theory, we could try to send another request as early as this)
 		end else begin
-			send_fetch_req = (fetch_offset - decode_offset < 32);
+			send_fetch_req = (fetch_offset - decode_offset < 7'd32);
 		end
 	end
 
@@ -63,7 +63,7 @@ module Core (
 
 	wire[0:(128+15)*8-1] decode_bytes_repeated = { decode_buffer, decode_buffer[0:15*8-1] }; // NOTE: buffer bits are left-to-right in increasing order
 	wire[0:15*8-1] decode_bytes = decode_bytes_repeated[decode_offset*8 +: 15*8]; // NOTE: buffer bits are left-to-right in increasing order
-	wire can_decode = (fetch_offset - decode_offset >= 15);
+	wire can_decode = (fetch_offset - decode_offset >= 7'd15);
 
 	function logic opcode_inside(logic[7:0] value, low, high);
 		opcode_inside = (value >= low && value <= high);
