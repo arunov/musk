@@ -1,5 +1,8 @@
+`ifndef _OPERAND_DECODER_ 
+`define _OPERAND_DECODER_
 
 `include "MacroUtils.sv"
+`include "DecoderTypes.sv"
 
 `define DFUN(x) function automatic logic[3:0] x(`LINTOFF(UNUSED) logic[0:7] rex, logic[0:7] mod, logic[0:7] sib, logic[0:31] disp, logic[0:31] imm `LINTON(UNUSED));
 `define ENDDFUN endfunction
@@ -21,6 +24,8 @@ function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t 
 	
 	logic[3:0] cnt = 0;
 
+	$write("%s\t", ins.opcode_struct.name);
+
 	case (ins.opcode_struct.mode)
 		`D(EvGv)
 		`D(GvEv)
@@ -31,3 +36,5 @@ function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t 
 endfunction
 
 `undef D
+
+`endif /* _OPERAND_DECODER_ */

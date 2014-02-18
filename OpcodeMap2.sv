@@ -1,3 +1,7 @@
+`ifndef _OPCODE_MAP2_
+`define _OPCODE_MAP2_
+
+`include "DecoderTypes.sv"
 
 `define M(c, n, m) map['h``c].name = "n"; map['h``c].mode = "m";
 
@@ -10,3 +14,5 @@ function automatic opcode_struct_t opcode_map2(logic[0:7] key);
 endfunction
 
 `undef M
+
+`endif /* _OPCODE_MAP2_ */

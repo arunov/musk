@@ -1,25 +1,8 @@
+`ifndef _DECODER_
+`define _DECODER_
+
 `include "MacroUtils.sv"
-
-typedef logic[0:32*8-1] opcode_name_t;
-typedef logic[0:9*8-1] opcode_mode_t;
-typedef enum {OP_MPX_NIL = 0, OP_MPX_66H, OP_MPX_F2H, OP_MPX_F3H} opcode_mprefix_t;
-
-typedef struct packed {
-	logic[0:3*8-1] opcode;
-	opcode_name_t name;
-	opcode_mode_t mode;
-	opcode_mprefix_t mprefix;
-} opcode_struct_t;
-
-typedef struct packed {
-	logic[0:7] lock_repeat_prefix;
-	logic[0:7] segment_branch_prefix;
-	logic[0:7] operand_size_prefix;
-	logic[0:7] address_size_prefix;
-	logic[0:7] rex_prefix;
-	opcode_struct_t opcode_struct;
-} fat_instruction_t;
-
+`include "DecoderTypes.sv"
 `include "OpcodeMap1.sv"
 `include "OpcodeMap2.sv"
 `include "OpcodeMap3.sv"
@@ -150,3 +133,5 @@ endfunction
 
 `undef ADVANCE_DC_POINTER
 `undef SKIP_AND_EXIT
+
+`endif /* _DECODER_ */
