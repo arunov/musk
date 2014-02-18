@@ -5,6 +5,7 @@ typedef logic[0:9*8-1] opcode_mode_t;
 typedef enum {OP_MPX_NIL = 0, OP_MPX_66H, OP_MPX_F2H, OP_MPX_F3H} opcode_mprefix_t;
 
 typedef struct packed {
+	logic[0:3*8-1] opcode;
 	opcode_name_t name;
 	opcode_mode_t mode;
 	opcode_mprefix_t mprefix;
@@ -23,6 +24,7 @@ typedef struct packed {
 `include "OpcodeMap2.sv"
 `include "OpcodeMap3.sv"
 `include "OpcodeMap4.sv"
+`include "OperandDecoder.sv"
 
 function automatic logic is_lock_repeat_prefix(logic[0:7] val);
 	return val == 'hF0 || val == 'hF3 || val == 'hF2;
@@ -66,16 +68,20 @@ function automatic logic[3:0] fill_opcode_struct(logic[0:3*8-1] op_bytes, output
 	if (op_bytes[0:7] == 'h0F) begin
 		if (op_bytes[8:15] == 'h3A) begin
 			op_struct = opcode_map4(op_bytes[16:23]);
+			op_struct.opcode = op_bytes;
 			return 3;
 		end else if (op_bytes[8:15] == 'h38) begin
 			op_struct = opcode_map3(op_bytes[16:23]);
+			op_struct.opcode = op_bytes;
 			return 3;
 		end else begin
 			op_struct = opcode_map2(op_bytes[8:15]);
+			op_struct.opcode[8:23] = op_bytes[0:15];
 			return 2;
 		end
 	end else begin
 		op_struct = opcode_map1(op_bytes[0:7]);
+		op_struct.opcode[16:23] = op_bytes[0:7];
 		return 1;
 	end
 endfunction
@@ -85,7 +91,7 @@ function automatic logic[0:7] get_dc_byte(logic[0:15*8-1] dc_bytes, logic[3:0] b
 endfunction
 
 `define ADVANCE_DC_POINTER(x) \
-	byte_index = byte_index + (x); \
+	byte_index += (x); \
 	cur_byte = get_dc_byte(dc_bytes, byte_index);
 
 `define SKIP_AND_EXIT \
@@ -95,7 +101,7 @@ endfunction
 function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 
 	logic[3:0] byte_index = 0;
-	logic[3:0] op_size = 0;
+	logic[3:0] cnt = 0;
 	logic[0:7] cur_byte = 0;
 	fat_instruction_t ins = 0;
 
@@ -116,17 +122,28 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 		`ADVANCE_DC_POINTER(1)
 	end
 
-	op_size = fill_opcode_struct(dc_bytes[byte_index*8+:8*3], ins.opcode_struct);
+	cnt = fill_opcode_struct(dc_bytes[byte_index*8+:8*3], ins.opcode_struct);
 	
 	// Check if opcode is invalid
-	if (ins.opcode_struct == 0) begin
-		$display("invalid opcode: first %h bytes of: %h", op_size, dc_bytes[byte_index*8+:8*3]);
+	if (ins.opcode_struct.name == 0) begin
+		$display("invalid opcode: first %h bytes of: %h", cnt, dc_bytes[byte_index*8+:8*3]);
 		`SKIP_AND_EXIT;
 	end
 	
-	`ADVANCE_DC_POINTER(op_size);
+	`ADVANCE_DC_POINTER(cnt);
+
+	dc_bytes <<= byte_index * 8;
+
+	cnt = decode_operands(ins, dc_bytes[0:10*8-1]);
+
+	if (cnt > 10) begin
+		`SKIP_AND_EXIT
+	end
+
+	byte_index += cnt;
 
 	$display("%h bytes decoded", byte_index);
+
 	return byte_index;
 
 endfunction
