@@ -34,6 +34,8 @@ function automatic opcode_struct_t opcode_map1(logic[7:0] key);
 	`M(81, and, EvIz)
 	`M(83, and, EvIb)
 
+	`M(C3, retq, _)
+
 	return map[key];
 
 endfunction
@@ -41,6 +43,8 @@ endfunction
 function automatic opcode_struct_t opcode_map2(logic[7:0] key);
 
 	opcode_struct_t[0:255] map = 0;
+
+	`M(05, syscall, _)
 
 	return map[key];
 
