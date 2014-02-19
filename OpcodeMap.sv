@@ -3,10 +3,69 @@
 
 `include "MacroUtils.sv"
 `include "DecoderTypes.sv"
-`include "OpcodeMap1.sv"
-`include "OpcodeMap2.sv"
-`include "OpcodeMap3.sv"
-`include "OpcodeMap4.sv"
+
+`define QM(c, n, m) map['h``c].name = n; map['h``c].mode = m;
+`define M(c, n, m) map['h``c].name = "n"; map['h``c].mode = "m";
+
+function automatic opcode_struct_t opcode_map1(logic[7:0] key);
+
+	opcode_struct_t[0:255] map = 0;
+
+	`M(01, add, EvGv)
+	`M(03, add, GvEv)
+	`M(09, or,  GvEv)
+	`M(0B, or,  EvGv)
+	`M(11, adc, EvGv)
+	`M(13, adc, GvEv)
+	`M(19, sbb, GvEv)
+	`M(1B, sbb, GvEv)
+	`M(21, and, EvGv)
+	`M(23, and, GvEv)
+	`M(29, sub, EvGv)
+	`M(2B, sub, GvEv)
+	`M(31, xor, EvGv)
+	`M(33, xor, GvEv)
+	`M(39, cmp, EvGv)
+	`M(3B, cmp, GvEv)
+	`M(85, test, EvGv)
+	`M(89, mov, EvGv)
+	`M(8B, cmp, GvEv)
+
+	`M(81, and, EvIz)
+	`M(83, and, EvIb)
+
+	return map[key];
+
+endfunction
+
+function automatic opcode_struct_t opcode_map2(logic[7:0] key);
+
+	opcode_struct_t[0:255] map = 0;
+
+	return map[key];
+
+endfunction
+
+
+function automatic opcode_struct_t opcode_map3(logic[7:0] key);
+
+	opcode_struct_t[0:255] map = 0;
+
+	return map[key];
+
+endfunction
+
+
+function automatic opcode_struct_t opcode_map4(logic[7:0] key);
+
+	opcode_struct_t[0:255] map = 0;
+
+	return map[key];
+
+endfunction
+
+`undef M
+`undef QM
 
 function automatic logic[3:0] fill_opcode_struct(logic[0:3*8-1] op_bytes, output opcode_struct_t op_struct);
 	if (`get_byte(op_bytes, 0) == 'h0F) begin
