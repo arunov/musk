@@ -34,10 +34,29 @@ endfunction
 `define ENDDFUN endfunction
 `define CALL_DFUN(x) (x(rex, opd_bytes))
 
+`DFUN(resolve_sib)
+	$write("SIB");
+	return 2; //todo: the interface is wrong
+`ENDDFUN
+
+`DFUN(resolve_disp_32)
+	//$write("%x ",disp);
+	return 0; //todo: the interface is wrong
+`ENDDFUN
+
 `DFUN(handleEv)
-	case (opd_bytes[0:1])
+	logic[15:0] num = 16'h0;
+	unique case (opd_bytes[0:1])
 		2'b00:
-			$display("indirect");
+			case (opd_bytes[5:7])
+				3'b100: num += `CALL_DFUN(resolve_sib) ;//resolve_sib(rex, mod, sib, disp, imm);
+				//`CALL_DFUN(resolve_sib) ;
+				3'b101: num += `CALL_DFUN(resolve_disp_32);//resolve_disp_32(rex, mod,sib,disp,imm);
+				default:begin
+						num += 2;
+						$write("[%s] ","register");
+						end
+			endcase	
 		2'b01:
 			$display("indirect + disp 8");
 		2'b10:
@@ -45,15 +64,33 @@ endfunction
 		2'b11:
 			$display("reg");
 	endcase
-	return 0;//todo:
+	return num;
 `ENDDFUN
 
 `DFUN(handleGv)
 	return 0;
 `ENDDFUN
 
+`DFUN(handleIb)
+	$write("%x  ",opd_bytes[1*8+0:1*8+7]);
+	return 0;
+`ENDDFUN
+
+`DFUN(handleIz)
+	$write("%x",{opd_bytes[1*8+0:1*8+31]}); //todo: rename sib to byte numbers
+	return 0;
+`ENDDFUN
+
 `DFUN(EvGv)
 	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleGv);
+`ENDDFUN
+
+`DFUN(EvIb)
+	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleIb);
+`ENDDFUN
+
+`DFUN(EvIz)
+	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleIz);
 `ENDDFUN
 
 `DFUN(GvEv)
@@ -70,12 +107,13 @@ endfunction
 function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t ins), logic[0:10*8-1] opd_bytes);
 	
 	logic[15:0] cnt = 0;
-
 	$write("%s\t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
 		`D(EvGv)
 		`D(GvEv)
+		`D(EvIb)
+		`D(EvIz)
 		default: cnt = 11; // >10 means error
 	endcase
 

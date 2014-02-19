@@ -88,7 +88,8 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 
 	// This is to make sure when we take 10 bytes, we don't go out of bound.
 	dc_bytes <<= byte_index * 8;
-
+	
+	$display(" BYTES: %x",dc_bytes[0:10*8-1]);
 	cnt = decode_operands(ins, `eget_bytes(dc_bytes, 0, 10));
 
 	if (cnt > 10) begin
