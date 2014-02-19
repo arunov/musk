@@ -13,11 +13,11 @@ typedef struct packed {
 } opcode_struct_t;
 
 typedef struct packed {
-	logic[0:7] lock_repeat_prefix;
-	logic[0:7] segment_branch_prefix;
-	logic[0:7] operand_size_prefix;
-	logic[0:7] address_size_prefix;
-	logic[0:7] rex_prefix;
+	logic[7:0] lock_repeat_prefix;
+	logic[7:0] segment_branch_prefix;
+	logic[7:0] operand_size_prefix;
+	logic[7:0] address_size_prefix;
+	logic[7:0] rex_prefix;
 	opcode_struct_t opcode_struct;
 } fat_instruction_t;
 
