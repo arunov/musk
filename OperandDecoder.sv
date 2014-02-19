@@ -30,9 +30,11 @@ function automatic reg_name_t general_register_names(logic[3:0] index);
 	return map[index];
 endfunction
 
-`define DFUN(x) function automatic logic[15:0] x(`LINTOFF(UNUSED) logic[7:0] rex, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
+`define DFUN(x) function automatic logic[15:0] x(`LINTOFF(UNUSED) logic[7:0] rex, logic[3:0] index, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
 `define ENDDFUN endfunction
-`define CALL_DFUN(x) (x(rex, opd_bytes))
+`define CALL_DFUN(x) (x(rex, index, opd_bytes))
+
+/* operand handling utilities */
 
 `DFUN(resolve_sib)
 	$write("SIB");
@@ -82,6 +84,8 @@ endfunction
 	return 0;
 `ENDDFUN
 
+/* operand handling entry points */
+
 `DFUN(EvGv)
 	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleGv);
 `ENDDFUN
@@ -102,7 +106,7 @@ endfunction
 `undef ENDDFUN
 `undef CALL_DFUN
 
-`define D(x) "x": cnt = x(ins.rex_prefix, opd_bytes);
+`define D(x) "x": cnt = x(ins.rex_prefix, 0, opd_bytes);
 
 /* If there is error, some value greater than 10 is returned. Otherwise, the number of bytes consumed is returned. */
 function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t ins), logic[0:10*8-1] opd_bytes);
