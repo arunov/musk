@@ -102,6 +102,10 @@ endfunction
 	return 1 + `CALL_DFUN(handleGv) + `CALL_DFUN(handleEv);
 `ENDDFUN
 
+`DFUN(_)
+	return 0;
+`ENDDFUN
+
 `undef DFUN
 `undef ENDDFUN
 `undef CALL_DFUN
@@ -119,6 +123,7 @@ function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t 
 		`D(GvEv)
 		`D(EvIb)
 		`D(EvIz)
+		`D(_)
 		default: cnt = 11; // >10 means error
 	endcase
 
