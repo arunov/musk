@@ -35,7 +35,17 @@ endfunction
 `define CALL_DFUN(x) (x(rex, opd_bytes))
 
 `DFUN(handleEv)
-	return 1;
+	case (mod[0:1])
+		2'b00:
+			$display("indirect");
+		2'b01:
+			$display("indirect + disp 8");
+		2'b10:
+			$display("indirect + disp 32");
+		2'b11:
+			$display("reg");
+	endcase
+	return 0;//todo:
 `ENDDFUN
 
 `DFUN(handleGv)
