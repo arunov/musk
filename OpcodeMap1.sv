@@ -29,6 +29,9 @@ function automatic opcode_struct_t opcode_map1(logic[0:7] key);
 	`M(89, mov, EvGv)
 	`M(8B, cmp, GvEv)
 
+	`M(81, and, EvIz)
+	`M(83, and, EvIb)
+
 	return map[key];
 
 endfunction

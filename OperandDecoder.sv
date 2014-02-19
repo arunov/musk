@@ -4,14 +4,33 @@
 `include "MacroUtils.sv"
 `include "DecoderTypes.sv"
 
-`define DFUN(x) function automatic logic[4:0] x(`LINTOFF(UNUSED) logic[0:7] rex, logic[0:7] mod, logic[0:7] sib, logic[0:31] disp, logic[0:31] imm `LINTON(UNUSED));
+`define DFUN(x) function automatic logic[4:0] x(`LINTOFF(UNUSED)logic[0:7] rex, logic[0:7] mod, logic[0:7] sib, logic[0:31] disp, logic[0:31] imm `LINTON(UNUSED));
 `define ENDDFUN endfunction
 `define CALL_DFUN(x) (x(rex, mod, sib, disp, imm))
 
+`DFUN(resolve_sib)
+	$write("SIB");
+	return 2; //todo: the interface is wrong
+`ENDDFUN
+
+`DFUN(resolve_disp_32)
+	//$write("%x ",disp);
+	return 0; //todo: the interface is wrong
+`ENDDFUN
+
 `DFUN(handleEv)
-	case (mod[0:1])
+	logic[0:4] num = 5'b00000;
+	unique case (mod[0:1])
 		2'b00:
-			$display("indirect");
+			case (mod[5:7])
+				3'b100: num += resolve_sib(rex, mod, sib, disp, imm);
+				//`CALL_DFUN(resolve_sib) ;
+				3'b101: num += resolve_disp_32(rex, mod,sib,disp,imm);
+				default:begin
+						num += 2;
+						$write("[%s] ","register");
+						end
+			endcase	
 		2'b01:
 			$display("indirect + disp 8");
 		2'b10:
@@ -19,15 +38,33 @@
 		2'b11:
 			$display("reg");
 	endcase
-	return 0;//todo:
+	return num;
 `ENDDFUN
 
 `DFUN(handleGv)
 	return 0;
 `ENDDFUN
 
+`DFUN(handleIb)
+	$write("%x  ",sib[0:7]);
+	return 0;
+`ENDDFUN
+
+`DFUN(handleIz)
+	$write("%x",{sib[0:7], disp[0:23]}); //todo: rename sib to byte numbers
+	return 0;
+`ENDDFUN
+
 `DFUN(EvGv)
 	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleGv);
+`ENDDFUN
+
+`DFUN(EvIb)
+	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleIb);
+`ENDDFUN
+
+`DFUN(EvIz)
+	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleIz);
 `ENDDFUN
 
 `DFUN(GvEv)
@@ -43,12 +80,13 @@
 function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t ins), logic[0:10*8-1] opd_bytes);
 	
 	`LINTOFF_UNUSED(logic[4:0] cnt = 0;)
-
 	$write("%s\t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
 		`D(EvGv)
 		`D(GvEv)
+		`D(EvIb)
+		`D(EvIz)
 		default: cnt = 11; // >10 means error
 	endcase
 
