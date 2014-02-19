@@ -45,16 +45,17 @@ endfunction
 `ENDDFUN
 
 `DFUN(handleEv)
+	bit rex_r = rex[2];
+	bit rex_b = rex[0];
 	logic[15:0] num = 16'h0;
 	unique case (opd_bytes[0:1])
 		2'b00:
 			case (opd_bytes[5:7])
-				3'b100: num += `CALL_DFUN(resolve_sib) ;//resolve_sib(rex, mod, sib, disp, imm);
-				//`CALL_DFUN(resolve_sib) ;
-				3'b101: num += `CALL_DFUN(resolve_disp_32);//resolve_disp_32(rex, mod,sib,disp,imm);
+				3'b100: num += `CALL_DFUN(resolve_sib);
+				3'b101: num += `CALL_DFUN(resolve_disp_32);
 				default:begin
 						num += 2;
-						$write("[%s] ","register");
+						$write("[%s] ",general_register_names({rex_b, opd_bytes[2:4]}));
 						end
 			endcase	
 		2'b01:
@@ -62,7 +63,7 @@ endfunction
 		2'b10:
 			$display("indirect + disp 32");
 		2'b11:
-			$display("reg");
+			$write("%s ",general_register_names({rex_r, opd_bytes[2:4]}));
 	endcase
 	return num;
 `ENDDFUN
@@ -77,7 +78,7 @@ endfunction
 `ENDDFUN
 
 `DFUN(handleIz)
-	$write("%x",{opd_bytes[1*8+0:1*8+31]}); //todo: rename sib to byte numbers
+	$write("%x",{opd_bytes[1*8+0:1*8+31]});
 	return 0;
 `ENDDFUN
 
