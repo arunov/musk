@@ -4,9 +4,35 @@
 `include "MacroUtils.sv"
 `include "DecoderTypes.sv"
 
-`define DFUN(x) function automatic logic[4:0] x(`LINTOFF(UNUSED) logic[0:7] rex, logic[0:7] mod, logic[0:7] sib, logic[0:31] disp, logic[0:31] imm `LINTON(UNUSED));
+typedef logic[0:4*8-1] reg_name_t;
+
+function automatic reg_name_t general_register_names(logic[3:0] index);
+
+	reg_name_t[0:15] map = 0;
+
+	map[0] = "%rax";
+	map[1] = "%rcx";
+	map[2] = "%rdx";
+	map[3] = "%rbx";
+	map[4] = "%rsp";
+	map[5] = "%rbp";
+	map[6] = "%rsi";
+	map[7] = "%rdi";
+	map[8] = "%r8";
+	map[9] = "%r9";
+	map[10] = "%r10";
+	map[11] = "%r11";
+	map[12] = "%r12";
+	map[13] = "%r13";
+	map[14] = "%r14";
+	map[15] = "%r15";
+
+	return map[index];
+endfunction
+
+`define DFUN(x) function automatic logic[15:0] x(`LINTOFF(UNUSED) logic[7:0] rex, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
 `define ENDDFUN endfunction
-`define CALL_DFUN(x) (x(rex, mod, sib, disp, imm))
+`define CALL_DFUN(x) (x(rex, opd_bytes))
 
 `DFUN(handleEv)
 	return 1;
@@ -28,11 +54,12 @@
 `undef ENDDFUN
 `undef CALL_DFUN
 
-`define D(x) "x": cnt = x(ins.rex_prefix, opd_bytes[0:7], opd_bytes[8:15], opd_bytes[16:47], opd_bytes[48:79]);
+`define D(x) "x": cnt = x(ins.rex_prefix, opd_bytes);
 
+/* If there is error, some value greater than 10 is returned. Otherwise, the number of bytes consumed is returned. */
 function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t ins), logic[0:10*8-1] opd_bytes);
 	
-	`LINTOFF_UNUSED(logic[4:0] cnt = 0;)
+	logic[15:0] cnt = 0;
 
 	$write("%s\t", ins.opcode_struct.name);
 
@@ -42,7 +69,12 @@ function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t 
 		default: cnt = 11; // >10 means error
 	endcase
 
-	return cnt[3:0];
+	if (cnt > 10) begin
+		return 11;
+	end else begin
+		return cnt[3:0];
+	end
+
 endfunction
 
 `undef D

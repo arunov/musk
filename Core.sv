@@ -73,6 +73,7 @@ module Core (
 	endfunction
 
 	logic[3:0] bytes_decoded_this_cycle;
+
 	always_comb begin
 		if (can_decode) begin : decode_block
 			// cse502 : Decoder here
