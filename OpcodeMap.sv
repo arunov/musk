@@ -27,6 +27,8 @@ function automatic opcode_struct_t opcode_map1(logic[7:0] key);
 	`M(33, xor, GvEv)
 	`M(39, cmp, EvGv)
 	`M(3B, cmp, GvEv)
+	`M(65, gs, _) // Instruction prefix 0x65 SEG=GS
+	`M(6C, insb, YbDX)
 	`M(85, test, EvGv)
 	`M(89, mov, EvGv)
 	`M(8B, cmp, GvEv)
