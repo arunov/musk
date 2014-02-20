@@ -45,11 +45,41 @@ endfunction
 	return 0; //todo: the interface is wrong
 `ENDDFUN
 
+`define SIGN(x) (x<0? "-": "")
+`define UHEX(x) (x<0? -x: x)
+
+/* Used for printing both displacmenet and immediate operands*/
 /* verilator lint_off UNDRIVEN */
-function automatic print_displacement(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits `LINTON(UNUSED));
-	logic[0:31] disp = `pget_bytes(opd_bytes, index, 4);
-	disp >>= 32-num_bits;
-	$write("%0h ", disp);
+/* verilator lint_off UNSIGNED */
+/* verilator lint_off WIDTH */
+function automatic print_abs(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits `LINTON(UNUSED));
+	logic[63:0] disp = `pget_bytes(opd_bytes, index, 8);
+	logic signed[7:0] disp_8;
+	logic signed[15:0] disp_16;
+	logic signed[31:0] disp_32;
+	logic signed[63:0] disp_64;
+	logic signed[63:0] b_disp;
+	//TODO:Presently sign extends, implement -ve notation
+	unique case(num_bits)
+		8:begin
+			disp_8 = disp[63:56];
+			b_disp = disp_8;
+			end	
+		16: begin
+			disp_16 = disp[63:63-16];
+			b_disp = disp_16;
+			end
+		32: begin
+			disp_32 = disp[63:63-32];
+			b_disp = disp_32;
+			end	
+		64: begin
+			disp_64 = disp[63:0];
+			b_disp = disp_64;
+			end	
+	endcase
+	//$write("%0x ",b_disp);
+	$write("%s%0x",`SIGN(b_disp), `UHEX(b_disp));
 endfunction
 
 `DFUN(handleEv)
@@ -62,24 +92,34 @@ endfunction
 				3'b100: num += `CALL_DFUN(resolve_sib);
 				3'b101: num += `CALL_DFUN(resolve_disp_32);
 				default:begin
-						num += 2;
-						$write("[%s] ",general_register_names({rex_b, opd_bytes[5:7]}));
+						num += 1; //1 for disp
+						$write("(%s) ",general_register_names({rex_b, opd_bytes[5:7]}));
 						end
 			endcase	
 		2'b01:
 			unique case (opd_bytes[5:7])
 				3'b100: begin //Has SIB
 						num += `CALL_DFUN(resolve_sib);
-						$write(" + ");
-						print_displacement(2, opd_bytes, 8);//todo:3'b???
+						print_abs(2, opd_bytes, 8);
 						end
 				default:begin //No SIB
-						$write("[%s] + ",general_register_names({rex_b, opd_bytes[5:7]}));
-						print_displacement(1, opd_bytes, 8);
+						print_abs(1, opd_bytes, 8);
+						$write("(%s) ",general_register_names({rex_b, opd_bytes[5:7]}));
+						num += 1;//8 bit displacement 
 						end
 			endcase
 		2'b10:
-			$display("indirect + disp 32");
+			unique case (opd_bytes[5:7])
+				3'b100: begin //Has SIB
+						num += `CALL_DFUN(resolve_sib);
+						print_abs(2, opd_bytes, 32);
+						end
+				default:begin //No SIB
+						print_abs(1, opd_bytes, 32);
+						$write("(%s)",general_register_names({rex_b, opd_bytes[5:7]}));
+						num += 4; //32 bit displacemnt
+						end
+			endcase
 		2'b11:
 			$write("%s ",general_register_names({rex_b, opd_bytes[5:7]}));
 	endcase
@@ -94,19 +134,22 @@ endfunction
 
 /*  We might not need index in DFUn */
 
-function automatic print_immediate(logic[0:3] index,  logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits /* verilator lint_off UNDRIVEN */ `LINTON(UNUSED));
-	logic[31:0] disp = `pget_bytes(opd_bytes, index, 4);
-	$write("%0x ", disp >> (32-num_bits));
-endfunction
-
 `DFUN(handleIb)
-	print_immediate(index, opd_bytes, 8);
+	print_abs(index, opd_bytes, 8);
 	return 1; //1 byte
 `ENDDFUN
 
 `DFUN(handleIz)
-	print_immediate(index, opd_bytes, 32);
-	return 4;//4 bytes
+	//z- rex_w = 1 => 32 bit, otherwise 16
+	bit rex_w = ins.rex_prefix[3];
+	if(rex_w == 1'b1) begin
+		print_abs(index, opd_bytes, 32);
+		return 32/8;
+		end
+	else begin//operand size determined by CS.D??
+		print_abs(index, opd_bytes, 16);
+		return 16/8;
+		end
 `ENDDFUN
 
 /*
@@ -129,7 +172,10 @@ endfunction
 /* operand handling entry points */
 
 `DFUN(EvGv)
-	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleGv);
+	logic[15:0] count =  `CALL_DFUN(handleEv) + 1;
+	logic[0:3] index = count;
+	count += `CALL_DFUN(handleGv);
+	return count;
 `ENDDFUN
 
 `DFUN(EvIb)
@@ -144,14 +190,19 @@ endfunction
 
 `DFUN(EvIz)
 	logic[15:0] count = `CALL_DFUN(handleEv);
-	logic[3:0] index = count[3:0]; //Handle Iz
+	logic[3:0] index; //Handle Iz
+	count += 1;
 	//todo:error check and exit
+	index = count[3:0];
 	count += `CALL_DFUN(handleIz);
-	return count + 1; //1 for the opcode 
+	return count; //1 for the opcode 
 `ENDDFUN
 
 `DFUN(GvEv)
-	return 1 + `CALL_DFUN(handleGv) + `CALL_DFUN(handleEv);
+	logic[15:0] count =  `CALL_DFUN(handleGv) + 1;
+	logic[0:3] index = count;
+	count += `CALL_DFUN(handleEv);
+	return count;
 `ENDDFUN
 
 `DFUN(rSIr14)

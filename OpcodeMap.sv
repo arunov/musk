@@ -33,8 +33,9 @@ function automatic opcode_struct_t opcode_map1(logic[7:0] key);
 	//`M(6F, outsl, DXXz)
 	`M(5e, pop, rSIr14)
 	`M(85, test, EvGv)
+	`M(87, xchg, EvGv)
 	`M(89, mov, EvGv)
-	`M(8B, cmp, GvEv)
+	`M(8B, mov, EvGv)
 
 	`M(81, and, EvIz)
 	`M(83, and, EvIb)
