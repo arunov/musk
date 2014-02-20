@@ -98,7 +98,7 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 
 	byte_index += cnt;
 
-	$display("%h bytes decoded", byte_index);
+	$display(" %h bytes decoded", byte_index);
 
 	return byte_index;
 

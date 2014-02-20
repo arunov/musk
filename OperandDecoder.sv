@@ -30,7 +30,8 @@ function automatic reg_name_t general_register_names(logic[3:0] index);
 	return map[index];
 endfunction
 
-`define DFUN(x) function automatic logic[15:0] x(`LINTOFF(UNUSED) fat_instruction_t ins, logic[3:0] index, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
+`define DFUN_RET_TYPE logic[15:0]
+`define DFUN(x) function automatic `DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic[3:0] index, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
 `define ENDDFUN endfunction
 `define CALL_DFUN(x) (x(ins, index, opd_bytes))
 
@@ -57,7 +58,7 @@ endfunction
 				3'b101: num += `CALL_DFUN(resolve_disp_32);
 				default:begin
 						num += 2;
-						$write("[%s] ",general_register_names({rex_b, opd_bytes[5:7]}));
+						$write("[%s]",general_register_names({rex_b, opd_bytes[5:7]}));
 						end
 			endcase	
 		2'b01:
@@ -65,19 +66,19 @@ endfunction
 		2'b10:
 			$display("indirect + disp 32");
 		2'b11:
-			$write("%s ",general_register_names({rex_b, opd_bytes[5:7]}));
+			$write("%s",general_register_names({rex_b, opd_bytes[5:7]}));
 	endcase
 	return num;
 `ENDDFUN
 
 `DFUN(handleGv)
 	// Assumption: Gv uses only MODRM.reg
-	$write("%s ", general_register_names({ins.rex_prefix[2], opd_bytes[2:4]}));
+	$write("%s", general_register_names({ins.rex_prefix[2], opd_bytes[2:4]}));
 	return 0;
 `ENDDFUN
 
 `DFUN(handleIb)
-	$write("%x  ",opd_bytes[1*8+0:1*8+7]);
+	$write("%x",opd_bytes[1*8+0:1*8+7]);
 	return 0;
 `ENDDFUN
 
@@ -88,17 +89,17 @@ endfunction
 
 /*
 `DFUN(handleYb)
-	$write("%%es:(%%rdi) ");
+	$write("%%es:(%%rdi)");
 	return 0;
 `ENDDFUN
 
 `DFUN(handleDX)
-	$write("(%%dx) ");
+	$write("(%%dx)");
 	return 0;
 `ENDDFUN
 
 `DFUN(handleXz)
-	$write("(%%ds:(%%rsi)) ");
+	$write("(%%ds:(%%rsi))");
 	return 0;
 `ENDDFUN
 */
@@ -106,19 +107,35 @@ endfunction
 /* operand handling entry points */
 
 `DFUN(EvGv)
-	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleGv);
+	`DFUN_RET_TYPE cnt1, cnt2;
+	cnt1 = `CALL_DFUN(handleEv);
+	$write(", ");
+	cnt2 = `CALL_DFUN(handleGv);
+	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
 `DFUN(EvIb)
-	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleIb);
+	`DFUN_RET_TYPE cnt1, cnt2;
+	cnt1 = `CALL_DFUN(handleEv);
+	$write(", ");
+	cnt2 = `CALL_DFUN(handleIb);
+	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
 `DFUN(EvIz)
-	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleIz);
+	`DFUN_RET_TYPE cnt1, cnt2;
+	cnt1 = `CALL_DFUN(handleEv);
+	$write(", ");
+	cnt2 = `CALL_DFUN(handleIz);
+	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
 `DFUN(GvEv)
-	return 1 + `CALL_DFUN(handleGv) + `CALL_DFUN(handleEv);
+	`DFUN_RET_TYPE cnt1, cnt2;
+	cnt1 = `CALL_DFUN(handleGv);
+	$write(", ");
+	cnt2 = `CALL_DFUN(handleEv);
+	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
 `DFUN(rSIr14)
@@ -147,6 +164,7 @@ endfunction
 `undef DFUN
 `undef ENDDFUN
 `undef CALL_DFUN
+`undef DFUN_RET_TYPE
 
 `define D(x) "x": cnt = x(ins, 0, opd_bytes);
 
