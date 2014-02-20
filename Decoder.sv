@@ -49,7 +49,7 @@ endfunction
 	cur_byte = `get_byte(dc_bytes, byte_index);
 
 `define SKIP_AND_EXIT \
-	$display("skip one byte: %h", cur_byte); \
+	$write("..skip one byte: %h", cur_byte); \
 	return 1;
 
 function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
