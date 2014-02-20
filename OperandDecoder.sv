@@ -50,7 +50,7 @@ endfunction
 `DFUN(handleEv)
 	//bit rex_r = rex[2];
 	bit rex_b = ins.rex_prefix[0];
-	logic[15:0] num = 16'h0;
+	`DFUN_RET_TYPE num = 16'h0;
 	unique case (opd_bytes[0:1])
 		2'b00:
 			case (opd_bytes[5:7])
