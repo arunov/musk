@@ -49,7 +49,7 @@ endfunction
 function automatic print_displacement(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits `LINTON(UNUSED));
 	logic[0:31] disp = `pget_bytes(opd_bytes, index, 4);
 	disp >>= 32-num_bits;
-	$write("%0d ", disp);
+	$write("%0h ", disp);
 endfunction
 
 `DFUN(handleEv)
@@ -95,18 +95,18 @@ endfunction
 /*  We might not need index in DFUn */
 
 function automatic print_immediate(logic[0:3] index,  logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits /* verilator lint_off UNDRIVEN */ `LINTON(UNUSED));
-	logic[0:31] disp = `pget_bytes(opd_bytes, index, 4);
+	logic[31:0] disp = `pget_bytes(opd_bytes, index, 4);
 	$write("%0x ", disp >> (32-num_bits));
 endfunction
 
 `DFUN(handleIb)
 	print_immediate(index, opd_bytes, 8);
-	return 0;
+	return 1; //1 byte
 `ENDDFUN
 
 `DFUN(handleIz)
 	print_immediate(index, opd_bytes, 32);
-	return 0;
+	return 4;//4 bytes
 `ENDDFUN
 
 /*
@@ -133,11 +133,21 @@ endfunction
 `ENDDFUN
 
 `DFUN(EvIb)
-	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleIb);
+	logic[15:0] count = `CALL_DFUN(handleEv);
+	logic[0:3] index;
+	count += 1;//1 byte for the code
+	//todo:exit
+	index = count[3:0]; //immediate comes after all the previous decoded bytes
+	count += `CALL_DFUN(handleIb);
+	return count;
 `ENDDFUN
 
 `DFUN(EvIz)
-	return 1 + `CALL_DFUN(handleEv) + `CALL_DFUN(handleIz);
+	logic[15:0] count = `CALL_DFUN(handleEv);
+	logic[3:0] index = count[3:0]; //Handle Iz
+	//todo:error check and exit
+	count += `CALL_DFUN(handleIz);
+	return count + 1; //1 for the opcode 
 `ENDDFUN
 
 `DFUN(GvEv)
