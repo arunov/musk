@@ -3,7 +3,6 @@
 
 `include "MacroUtils.sv"
 `include "DecoderTypes.sv"
-
 typedef logic[0:4*8-1] reg_name_t;
 
 function automatic reg_name_t general_register_names(logic[3:0] index);
@@ -46,13 +45,20 @@ endfunction
 	return 0; //todo: the interface is wrong
 `ENDDFUN
 
+/* verilator lint_off UNDRIVEN */
+function automatic print_displacement(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits `LINTON(UNUSED));
+	logic[0:31] disp = `pget_bytes(opd_bytes, index, 4);
+	disp >>= 32-num_bits;
+	$write("%0d ", disp);
+endfunction
+
 `DFUN(handleEv)
 	bit rex_r = rex[2];
 	bit rex_b = rex[0];
 	logic[15:0] num = 16'h0;
 	unique case (opd_bytes[0:1])
 		2'b00:
-			case (opd_bytes[5:7])
+			unique case (opd_bytes[5:7])
 				3'b100: num += `CALL_DFUN(resolve_sib);
 				3'b101: num += `CALL_DFUN(resolve_disp_32);
 				default:begin
@@ -61,7 +67,17 @@ endfunction
 						end
 			endcase	
 		2'b01:
-			$display("indirect + disp 8");
+			unique case (opd_bytes[5:7])
+				3'b100: begin //Has SIB
+						num += `CALL_DFUN(resolve_sib);
+						$write(" + ");
+						print_displacement(2, opd_bytes, 8);//todo:3'b???
+						end
+				default:begin //No SIB
+						$write("[%s] + ",general_register_names({rex_b, opd_bytes[5:7]}));
+						print_displacement(1, opd_bytes, 8);
+						end
+			endcase
 		2'b10:
 			$display("indirect + disp 32");
 		2'b11:
@@ -74,13 +90,20 @@ endfunction
 	return 0;
 `ENDDFUN
 
+/*  We might not need index in DFUn */
+
+function automatic print_immediate(logic[0:3] index,  logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits /* verilator lint_off UNDRIVEN */ `LINTON(UNUSED));
+	logic[0:31] disp = `pget_bytes(opd_bytes, index, 4);
+	$write("%0x ", disp >> (32-num_bits));
+endfunction
+
 `DFUN(handleIb)
-	$write("%x  ",opd_bytes[1*8+0:1*8+7]);
+	print_immediate(index, opd_bytes, 8);
 	return 0;
 `ENDDFUN
 
 `DFUN(handleIz)
-	$write("%x",{opd_bytes[1*8+0:1*8+31]});
+	print_immediate(index, opd_bytes, 32);
 	return 0;
 `ENDDFUN
 
