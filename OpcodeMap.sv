@@ -19,6 +19,7 @@ function automatic opcode_struct_t opcode_map1(logic[7:0] key);
 	`M(13, adc, GvEv)
 	`M(19, sbb, GvEv)
 	`M(1B, sbb, GvEv)
+	//`M(20, and, EvGv) // Actually EbGb
 	`M(21, and, EvGv)
 	`M(23, and, GvEv)
 	`M(29, sub, EvGv)
@@ -27,8 +28,9 @@ function automatic opcode_struct_t opcode_map1(logic[7:0] key);
 	`M(33, xor, GvEv)
 	`M(39, cmp, EvGv)
 	`M(3B, cmp, GvEv)
-	`M(65, gs, _) // Instruction prefix 0x65 SEG=GS
-	`M(6C, insb, YbDX)
+	//`M(65, gs, _) // Instruction prefix 0x65 SEG=GS
+	//`M(6C, insb, YbDX)
+	//`M(6F, outsl, DXXz)
 	`M(85, test, EvGv)
 	`M(89, mov, EvGv)
 	`M(8B, cmp, GvEv)

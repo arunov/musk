@@ -86,6 +86,7 @@ endfunction
 	return 0;
 `ENDDFUN
 
+/*
 `DFUN(handleYb)
 	$write("%%es:(%%rdi) ");
 	return 0;
@@ -95,6 +96,12 @@ endfunction
 	$write("(%%dx) ");
 	return 0;
 `ENDDFUN
+
+`DFUN(handleXz)
+	$write("(%%ds:(%%rsi)) ");
+	return 0;
+`ENDDFUN
+*/
 
 /* operand handling entry points */
 
@@ -114,9 +121,15 @@ endfunction
 	return 1 + `CALL_DFUN(handleGv) + `CALL_DFUN(handleEv);
 `ENDDFUN
 
+/*
 `DFUN(YbDX)
 	return 0 + `CALL_DFUN(handleYb) + `CALL_DFUN(handleDX);
 `ENDDFUN
+
+`DFUN(DXXz)
+	return 0 + `CALL_DFUN(handleDX) + `CALL_DFUN(handleXz);
+`ENDDFUN
+*/
 
 `DFUN(_)
 	return 0;
@@ -140,7 +153,8 @@ function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t 
 		`D(EvIb)
 		`D(EvIz)
 		`D(_)
-		`D(YbDX)
+		//`D(YbDX)
+		//`D(DXXz)
 		default: cnt = 11; // >10 means error
 	endcase
 
