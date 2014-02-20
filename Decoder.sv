@@ -55,7 +55,8 @@ endfunction
 function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 
 	logic[3:0] byte_index = 0;
-	logic[3:0] cnt = 0;
+	logic[3:0] opcode_byte_cnt = 0;
+	logic[3:0] operand_byte_cnt = 0;
 	logic[7:0] cur_byte = 0;
 	fat_instruction_t ins = 0;
 
@@ -76,7 +77,8 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 		`ADVANCE_DC_POINTER(1)
 	end
 
-	cnt = fill_opcode_struct(`pget_bytes(dc_bytes, byte_index, 4), ins.opcode_struct);
+	/* 4 bytes are passed because ModRM may be needed */
+	opcode_byte_cnt = fill_opcode_struct(`pget_bytes(dc_bytes, byte_index, 4), ins.opcode_struct);
 
 	// Check if opcode is invalid
 	if (ins.opcode_struct.name == 0) begin
@@ -84,24 +86,24 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 		`SKIP_AND_EXIT;
 	end
 	
-	`ADVANCE_DC_POINTER(cnt);
+	`ADVANCE_DC_POINTER(opcode_byte_cnt)
 
 	// This is to make sure when we take 10 bytes, we don't go out of bound.
 	dc_bytes <<= byte_index * 8;
 	
 	$display(" BYTES: %x",dc_bytes[0:10*8-1]);
-	cnt = decode_operands(ins, `eget_bytes(dc_bytes, 0, 10));
+	operand_byte_cnt = decode_operands(ins, `eget_bytes(dc_bytes, 0, 10));
 
-	if (cnt > 10) begin
+	if (operand_byte_cnt > 10) begin
 		`SKIP_AND_EXIT
 	end
 
-	/* Prevent double count of ModRM */
-	if (ins.opcode_struct.group != 0 && ins.operands_use_modrm) begin
-		byte_index--;
+	/* Prevent missing count of ModRM */
+	if (!ins.operands_use_modrm && ins.opcode_struct.group != 0) begin
+		`ADVANCE_DC_POINTER(1)
 	end
 
-	byte_index += cnt;
+	`ADVANCE_DC_POINTER(operand_byte_cnt)
 
 	$display(" %h bytes decoded", byte_index);
 
