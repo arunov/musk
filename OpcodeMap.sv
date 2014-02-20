@@ -40,7 +40,7 @@
 	//`M(65, gs, _) // Instruction prefix 0x65 SEG=GS
 	//`M(6C, insb, YbDX)
 	//`M(6F, outsl, DXXz)
-	`M(5e, pop, rSIr14)
+	`M(5e, pop, rSI_r14)
 	`M(85, test, EvGv)
 	`M(89, mov, EvGv)
 	`M(8B, cmp, GvEv)
