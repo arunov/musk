@@ -5,7 +5,7 @@
 `include "DecoderTypes.sv"
 
 `define M(c, n, m) 'h``c: begin res.name = "n"; res.mode = "m"; end
-`define G(c, g, m) 'h``c: begin res.name = "Group``g"; res.mode = "m"; res.group = 'h``g; end
+`define G(c, g, m) 'h``c: begin res.name = 0; res.mode = "m"; res.group = 'h``g; end
 
 `define MAP_BEGIN(name) \
 	function automatic opcode_struct_t name(logic[7:0] key); \
@@ -44,8 +44,8 @@
 	`M(85, test, EvGv)
 	`M(89, mov, EvGv)
 	`M(8B, cmp, GvEv)
-	`M(81, and, EvIz)
-	`M(83, and, EvIb)
+	`G(81, 1, EvIz)
+	`G(83, 1, EvIb)
 	`M(C3, retq, _)
 `MAP_END
 
@@ -71,7 +71,26 @@ function automatic opcode_struct_t opcode_group_map(logic[4:0] group, logic[7:0]
 	casez ({group, key})
 
 	/* within the same group, patterns with more ?'s should appear before patterns with less ?'s */
+
 	`GM(1, ??000???, add, _)
+	`GM(1, ??001???, or, _)
+	`GM(1, ??010???, adc, _)
+	`GM(1, ??011???, sbb, _)
+	`GM(1, ??100???, and, _)
+	`GM(1, ??101???, sub, _)
+	`GM(1, ??110???, xor, _)
+	`GM(1, ??111???, cmp, _)
+
+	`GM(1A, ??000???, pop, _)
+	
+	`GM(2, ??000???, rol, _)
+	`GM(2, ??001???, ror, _)
+	`GM(2, ??010???, rcl, _)
+	`GM(2, ??011???, rcr, _)
+	`GM(2, ??100???, shl, _)
+	`GM(2, ??101???, shr, _)
+	//`GM(2, ??110???, , _)
+	`GM(2, ??111???, sar, _)
 
 	endcase
 	return res;
