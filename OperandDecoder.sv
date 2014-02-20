@@ -53,7 +53,7 @@ function automatic print_displacement(logic[0:3] index, logic[0:10*8-1]  opd_byt
 endfunction
 
 `DFUN(handleEv)
-	bit rex_r = rex[2];
+	//bit rex_r = rex[2];
 	bit rex_b = rex[0];
 	logic[15:0] num = 16'h0;
 	unique case (opd_bytes[0:1])
@@ -63,7 +63,7 @@ endfunction
 				3'b101: num += `CALL_DFUN(resolve_disp_32);
 				default:begin
 						num += 2;
-						$write("[%s] ",general_register_names({rex_b, opd_bytes[2:4]}));
+						$write("[%s] ",general_register_names({rex_b, opd_bytes[5:7]}));
 						end
 			endcase	
 		2'b01:
@@ -81,12 +81,14 @@ endfunction
 		2'b10:
 			$display("indirect + disp 32");
 		2'b11:
-			$write("%s ",general_register_names({rex_r, opd_bytes[2:4]}));
+			$write("%s ",general_register_names({rex_b, opd_bytes[5:7]}));
 	endcase
 	return num;
 `ENDDFUN
 
 `DFUN(handleGv)
+	// Assumption: Gv uses only MODRM.reg
+	$write("%s ", general_register_names({rex[2], opd_bytes[2:4]}));
 	return 0;
 `ENDDFUN
 
@@ -107,6 +109,23 @@ endfunction
 	return 0;
 `ENDDFUN
 
+/*
+`DFUN(handleYb)
+	$write("%%es:(%%rdi) ");
+	return 0;
+`ENDDFUN
+
+`DFUN(handleDX)
+	$write("(%%dx) ");
+	return 0;
+`ENDDFUN
+
+`DFUN(handleXz)
+	$write("(%%ds:(%%rsi)) ");
+	return 0;
+`ENDDFUN
+*/
+
 /* operand handling entry points */
 
 `DFUN(EvGv)
@@ -123,6 +142,20 @@ endfunction
 
 `DFUN(GvEv)
 	return 1 + `CALL_DFUN(handleGv) + `CALL_DFUN(handleEv);
+`ENDDFUN
+
+/*
+`DFUN(YbDX)
+	return 0 + `CALL_DFUN(handleYb) + `CALL_DFUN(handleDX);
+`ENDDFUN
+
+`DFUN(DXXz)
+	return 0 + `CALL_DFUN(handleDX) + `CALL_DFUN(handleXz);
+`ENDDFUN
+*/
+
+`DFUN(_)
+	return 0;
 `ENDDFUN
 
 `undef DFUN
@@ -142,6 +175,9 @@ function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t 
 		`D(GvEv)
 		`D(EvIb)
 		`D(EvIz)
+		`D(_)
+		//`D(YbDX)
+		//`D(DXXz)
 		default: cnt = 11; // >10 means error
 	endcase
 
