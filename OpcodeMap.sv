@@ -4,13 +4,22 @@
 `include "MacroUtils.sv"
 `include "DecoderTypes.sv"
 
-`define QM(c, n, m) map['h``c].name = n; map['h``c].mode = m;
-`define M(c, n, m) map['h``c].name = "n"; map['h``c].mode = "m";
+`define M(c, n, m) 'h``c: begin res.name = "n"; res.mode = "m"; end
+`define G(c, g, m) 'h``c: begin res.name = "Group``g"; res.mode = "m"; res.group = 'h``g; end
 
-function automatic opcode_struct_t opcode_map1(logic[7:0] key);
+`define MAP_BEGIN(name) \
+	function automatic opcode_struct_t name(logic[7:0] key); \
+		opcode_struct_t res = 0; \
+		case (key)
 
-	opcode_struct_t[0:255] map = 0;
+`define MAP_END \
+		endcase \
+		return res; \
+	endfunction
 
+/* Use _ to represent an empty mode */
+
+`MAP_BEGIN(opcode_map1)
 	`M(01, add, EvGv)
 	`M(03, add, GvEv)
 	`M(09, or,  GvEv)
@@ -30,63 +39,75 @@ function automatic opcode_struct_t opcode_map1(logic[7:0] key);
 	`M(85, test, EvGv)
 	`M(89, mov, EvGv)
 	`M(8B, cmp, GvEv)
-
 	`M(81, and, EvIz)
 	`M(83, and, EvIb)
+`MAP_END
 
-	return map[key];
+`MAP_BEGIN(opcode_map2)
+`MAP_END
 
-endfunction
+`MAP_BEGIN(opcode_map3)
+`MAP_END
 
-function automatic opcode_struct_t opcode_map2(logic[7:0] key);
-
-	opcode_struct_t[0:255] map = 0;
-
-	return map[key];
-
-endfunction
-
-
-function automatic opcode_struct_t opcode_map3(logic[7:0] key);
-
-	opcode_struct_t[0:255] map = 0;
-
-	return map[key];
-
-endfunction
-
-
-function automatic opcode_struct_t opcode_map4(logic[7:0] key);
-
-	opcode_struct_t[0:255] map = 0;
-
-	return map[key];
-
-endfunction
+`MAP_BEGIN(opcode_map4)
+`MAP_END
 
 `undef M
-`undef QM
+`undef G
+`undef MAP_BEGIN
+`undef MAP_END
 
-function automatic logic[3:0] fill_opcode_struct(logic[0:3*8-1] op_bytes, output opcode_struct_t op_struct);
+`define GM(g, t, n, m) {5'h``g, 8'b``t}: begin res.name = "n"; res.mode = "m"; end
+
+function automatic opcode_struct_t opcode_group_map(logic[4:0] group, logic[7:0] key);
+	opcode_struct_t res = 0;
+	casez ({group, key})
+
+	/* within the same group, patterns with more ?'s should appear before patterns with less ?'s */
+	`GM(1, ??000???, add, _)
+
+	endcase
+	return res;
+endfunction
+
+`undef GM
+
+/* op_struct.name will be zero when something goes wrong */
+function automatic logic[3:0] fill_opcode_struct(logic[0:4*8-1] op_bytes, output opcode_struct_t op_struct);
+
+	logic[3:0] cnt = 0;
+	`LINTOFF_UNUSED(opcode_struct_t tmp = 0);
+
 	if (`get_byte(op_bytes, 0) == 'h0F) begin
 		if (`get_byte(op_bytes, 1) == 'h3A) begin
 			op_struct = opcode_map4(`get_byte(op_bytes, 2));
 			`eget_bytes(op_struct.opcode, 0, 3) = `eget_bytes(op_bytes, 0, 3);
-			return 3;
+			cnt = 3;
 		end else if (`get_byte(op_bytes, 1) == 'h38) begin
 			op_struct = opcode_map3(`get_byte(op_bytes, 2));
 			`eget_bytes(op_struct.opcode, 0, 3) = `eget_bytes(op_bytes, 0, 3);
-			return 3;
+			cnt = 3;
 		end else begin
 			op_struct = opcode_map2(`get_byte(op_bytes, 1));
 			`eget_bytes(op_struct.opcode, 1, 3) = `eget_bytes(op_bytes, 0, 2);
-			return 2;
+			cnt = 2;
 		end
 	end else begin
 		op_struct = opcode_map1(`get_byte(op_bytes, 0));
 		`eget_bytes(op_struct.opcode, 2, 3) = `eget_bytes(op_bytes, 0, 1);
-		return 1;
+		cnt = 1;
 	end
+
+	if (op_struct.group != 0) begin
+		cnt++;
+		tmp = opcode_group_map(op_struct.group, `get_byte(op_bytes, 3));
+		op_struct.name = tmp.name;
+		if (op_struct.mode == "_") begin
+			op_struct.mode = tmp.mode;
+		end
+	end
+
+	return cnt;
 endfunction
 
 `endif /* _OPCODE_MAP_ */
