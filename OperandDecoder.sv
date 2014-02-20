@@ -30,9 +30,9 @@ function automatic reg_name_t general_register_names(logic[3:0] index);
 	return map[index];
 endfunction
 
-`define DFUN(x) function automatic logic[15:0] x(`LINTOFF(UNUSED) logic[7:0] rex, logic[3:0] index, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
+`define DFUN(x) function automatic logic[15:0] x(`LINTOFF(UNUSED) fat_instruction_t ins, logic[3:0] index, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
 `define ENDDFUN endfunction
-`define CALL_DFUN(x) (x(rex, index, opd_bytes))
+`define CALL_DFUN(x) (x(ins, index, opd_bytes))
 
 /* operand handling utilities */
 
@@ -48,7 +48,7 @@ endfunction
 
 `DFUN(handleEv)
 	//bit rex_r = rex[2];
-	bit rex_b = rex[0];
+	bit rex_b = ins.rex_prefix[0];
 	logic[15:0] num = 16'h0;
 	unique case (opd_bytes[0:1])
 		2'b00:
@@ -72,7 +72,7 @@ endfunction
 
 `DFUN(handleGv)
 	// Assumption: Gv uses only MODRM.reg
-	$write("%s ", general_register_names({rex[2], opd_bytes[2:4]}));
+	$write("%s ", general_register_names({ins.rex_prefix[2], opd_bytes[2:4]}));
 	return 0;
 `ENDDFUN
 
@@ -121,6 +121,11 @@ endfunction
 	return 1 + `CALL_DFUN(handleGv) + `CALL_DFUN(handleEv);
 `ENDDFUN
 
+`DFUN(rSIr14)
+	//if
+	return 1;
+`ENDDFUN
+
 /*
 `DFUN(YbDX)
 	return 0 + `CALL_DFUN(handleYb) + `CALL_DFUN(handleDX);
@@ -139,7 +144,7 @@ endfunction
 `undef ENDDFUN
 `undef CALL_DFUN
 
-`define D(x) "x": cnt = x(ins.rex_prefix, 0, opd_bytes);
+`define D(x) "x": cnt = x(ins, 0, opd_bytes);
 
 /* If there is error, some value greater than 10 is returned. Otherwise, the number of bytes consumed is returned. */
 function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t ins), logic[0:10*8-1] opd_bytes);
@@ -152,6 +157,7 @@ function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t 
 		`D(GvEv)
 		`D(EvIb)
 		`D(EvIz)
+		`D(rSIr14)
 		`D(_)
 		//`D(YbDX)
 		//`D(DXXz)
