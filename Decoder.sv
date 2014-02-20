@@ -49,7 +49,7 @@ endfunction
 	cur_byte = `get_byte(dc_bytes, byte_index);
 
 `define SKIP_AND_EXIT \
-	$write("..skip one byte: %h", cur_byte); \
+	$display("skip one byte: %h", cur_byte); \
 	return 1;
 
 function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
@@ -80,7 +80,7 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 
 	// Check if opcode is invalid
 	if (ins.opcode_struct.name == 0) begin
-		$display("invalid opcode: %0h", ins.opcode_struct.opcode);
+		$write("invalid opcode: %0h", ins.opcode_struct.opcode);
 		`SKIP_AND_EXIT;
 	end
 	
