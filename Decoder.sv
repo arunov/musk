@@ -76,7 +76,7 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 		`ADVANCE_DC_POINTER(1)
 	end
 
-	cnt = fill_opcode_struct(`pget_bytes(dc_bytes, byte_index, 3), ins.opcode_struct);
+	cnt = fill_opcode_struct(`pget_bytes(dc_bytes, byte_index, 4), ins.opcode_struct);
 
 	// Check if opcode is invalid
 	if (ins.opcode_struct.name == 0) begin
@@ -96,9 +96,14 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 		`SKIP_AND_EXIT
 	end
 
+	/* Prevent double count of ModRM */
+	if (ins.opcode_struct.group != 0 && ins.operands_use_modrm) begin
+		byte_index--;
+	end
+
 	byte_index += cnt;
 
-	$display("%h bytes decoded", byte_index);
+	$display(" %h bytes decoded", byte_index);
 
 	return byte_index;
 

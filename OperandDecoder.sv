@@ -29,7 +29,8 @@ function automatic reg_name_t general_register_names(logic[3:0] index);
 	return map[index];
 endfunction
 
-`define DFUN(x) function automatic logic[15:0] x(`LINTOFF(UNUSED) fat_instruction_t ins, logic[3:0] index, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
+`define DFUN_RET_TYPE logic[15:0]
+`define DFUN(x) function automatic `DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic[3:0] index, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
 `define ENDDFUN endfunction
 `define CALL_DFUN(x) (x(ins, index, opd_bytes))
 
@@ -85,7 +86,7 @@ endfunction
 `DFUN(handleEv)
 	//bit rex_r = rex[2];
 	bit rex_b = ins.rex_prefix[0];
-	logic[15:0] num = 16'h0;
+	`DFUN_RET_TYPE num = 16'h0;
 	unique case (opd_bytes[0:1])
 		2'b00:
 			unique case (opd_bytes[5:7])
@@ -121,14 +122,14 @@ endfunction
 						end
 			endcase
 		2'b11:
-			$write("%s ",general_register_names({rex_b, opd_bytes[5:7]}));
+			$write("%s",general_register_names({rex_b, opd_bytes[5:7]}));
 	endcase
 	return num;
 `ENDDFUN
 
 `DFUN(handleGv)
 	// Assumption: Gv uses only MODRM.reg
-	$write("%s ", general_register_names({ins.rex_prefix[2], opd_bytes[2:4]}));
+	$write("%s", general_register_names({ins.rex_prefix[2], opd_bytes[2:4]}));
 	return 0;
 `ENDDFUN
 
@@ -154,17 +155,17 @@ endfunction
 
 /*
 `DFUN(handleYb)
-	$write("%%es:(%%rdi) ");
+	$write("%%es:(%%rdi)");
 	return 0;
 `ENDDFUN
 
 `DFUN(handleDX)
-	$write("(%%dx) ");
+	$write("(%%dx)");
 	return 0;
 `ENDDFUN
 
 `DFUN(handleXz)
-	$write("(%%ds:(%%rsi)) ");
+	$write("(%%ds:(%%rsi))");
 	return 0;
 `ENDDFUN
 */
@@ -172,42 +173,48 @@ endfunction
 /* operand handling entry points */
 
 `DFUN(EvGv)
-	logic[15:0] count =  `CALL_DFUN(handleEv) + 1;
-	logic[0:3] index = count;
-	count += `CALL_DFUN(handleGv);
-	return count;
+	`DFUN_RET_TYPE cnt1, cnt2;
+	cnt1 = `CALL_DFUN(handleEv);
+	$write(", ");
+	cnt2 = `CALL_DFUN(handleGv);
+	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
 `DFUN(EvIb)
-	logic[15:0] count = `CALL_DFUN(handleEv);
-	logic[0:3] index;
-	count += 1;//1 byte for the code
-	//todo:exit
-	index = count[3:0]; //immediate comes after all the previous decoded bytes
-	count += `CALL_DFUN(handleIb);
-	return count;
+	`DFUN_RET_TYPE cnt1, cnt2;
+	logic[3:0] index; 
+	cnt1 = `CALL_DFUN(handleEv);
+	$write(", ");
+	index = cnt1[3:0] + 1; //immediate comes after all the previous decoded bytes
+	cnt2 = `CALL_DFUN(handleIb);
+	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
 `DFUN(EvIz)
-	logic[15:0] count = `CALL_DFUN(handleEv);
-	logic[3:0] index; //Handle Iz
-	count += 1;
-	//todo:error check and exit
-	index = count[3:0];
-	count += `CALL_DFUN(handleIz);
-	return count; //1 for the opcode 
+	`DFUN_RET_TYPE cnt1, cnt2;
+	logic[3:0] index; 
+	cnt1 = `CALL_DFUN(handleEv);
+	$write(", ");
+	index = cnt1[3:0] + 1; //immediate comes after all the previous decoded bytes
+	cnt2 = `CALL_DFUN(handleIz);
+	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
 `DFUN(GvEv)
-	logic[15:0] count =  `CALL_DFUN(handleGv) + 1;
-	logic[0:3] index = count;
-	count += `CALL_DFUN(handleEv);
-	return count;
+	`DFUN_RET_TYPE cnt1, cnt2;
+	cnt1 = `CALL_DFUN(handleGv);
+	$write(", ");
+	cnt2 = `CALL_DFUN(handleEv);
+	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
 `DFUN(rSIr14)
-	//if
-	return 1;
+	if(ins.rex_prefix == 0 || ins.rex_prefix[0] == 0) begin
+		$write("%%rsi");
+	end else if(ins.rex_prefix[0] == 1) begin
+		$write("%%r14");
+	end
+	return 0;
 `ENDDFUN
 
 /*
@@ -227,6 +234,7 @@ endfunction
 `undef DFUN
 `undef ENDDFUN
 `undef CALL_DFUN
+`undef DFUN_RET_TYPE
 
 `define D(x) "x": cnt = x(ins, 0, opd_bytes);
 
