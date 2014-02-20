@@ -122,8 +122,12 @@ endfunction
 `ENDDFUN
 
 `DFUN(rSIr14)
-	//if
-	return 1;
+	if(ins.rex_prefix == 0 || ins.rex_prefix[0] == 0) begin
+		$write("%%rsi");
+	end else if(ins.rex_prefix[0] == 1) begin
+		$write("%%r14");
+	end
+	return 0;
 `ENDDFUN
 
 /*
