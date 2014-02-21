@@ -207,6 +207,14 @@ endfunction
 `ENDDFUN
 
 /*
+`DFUN(handleEp)
+	// (No) - Instruction prefix - REX.W - Effective operand size - pointer size
+	// -------------------------------------------------------------------------
+	// (1)  - don't care         - 1     - 64                     - 80
+	// (2)  - no 66h             - 0     - 32                     - 48
+	// (3)  - yes 66h            - 0     - 16                     - 32
+`ENDDFUN
+
 `DFUN(handleYb)
 	$write("%%es:(%%rdi)");
 	return 0;
@@ -224,6 +232,9 @@ endfunction
 */
 
 /* operand handling entry points */
+`DFUN(Ev)
+	return 1 + `CALL_DFUN(handleEv);
+`ENDDFUN
 
 `DFUN(Ev_Gv)
 	`DFUN_RET_TYPE cnt1, cnt2;
