@@ -99,6 +99,15 @@
 
 	`M(90, nop, _)
 
+	`M(B8, movabs, rAX$r8_Iv)
+	`M(B9, movabs, rCX$r9_Iv)
+	`M(BA, movabs, rDX$r10_Iv)
+	`M(BB, movabs, rBX$r11_Iv)
+	`M(BC, movabs, rSP$r12_Iv)
+	`M(BD, movabs, rBP$r13_Iv)
+	`M(BE, movabs, rSI$r14_Iv)
+	`M(BF, movabs, rDI$r15_Iv)
+
 	`G(C1, 2, Ev_Ib)
 	`M(C3, retq, _)
 	`G(C7, 11, Ev_Iz)
@@ -174,7 +183,7 @@ function automatic opcode_struct_t opcode_group_map(logic [0:3*8-1] opcode, logi
 	`GM(5, ??101???, jmp, Mp)
 	`GM(5, ??110???, push, Ev)
 
-	`GMC(11, ??000???, mov, EV_Iz, C7)
+	`GMC(11, ??000???, mov, Ev_Iz, C7)
 
 	endcase
 	return res;
