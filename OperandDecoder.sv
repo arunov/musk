@@ -34,6 +34,15 @@ endfunction
 `define ENDDFUN endfunction
 `define CALL_DFUN(x) (x(ins, index, opd_bytes))
 
+`define DFUNR1$R2(reg_def, reg_def_print, reg_alt, reg_alt_print) `DFUN(reg_def``$``reg_alt) \
+	if(ins.rex_prefix == 0 || ins.rex_prefix[0] == 0) begin \
+		$write(reg_def_print); \
+	end else if(ins.rex_prefix[0] == 1) begin \
+		$write(reg_alt_print); \
+	end \
+	return 0; \
+`ENDDFUN
+
 /* operand handling utilities */
 
 `define resolve_index(sindex, content)\
@@ -205,7 +214,7 @@ endfunction
 
 /* operand handling entry points */
 
-`DFUN(EvGv)
+`DFUN(Ev_Gv)
 	`DFUN_RET_TYPE cnt1, cnt2;
 	cnt1 = `CALL_DFUN(handleEv);
 	$write(", ");
@@ -213,7 +222,7 @@ endfunction
 	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
-`DFUN(EvIb)
+`DFUN(Ev_Ib)
 	`DFUN_RET_TYPE cnt1, cnt2;
 	logic[3:0] index; 
 	cnt1 = `CALL_DFUN(handleEv);
@@ -223,7 +232,7 @@ endfunction
 	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
-`DFUN(EvIz)
+`DFUN(Ev_Iz)
 	`DFUN_RET_TYPE cnt1, cnt2;
 	logic[3:0] index; 
 	cnt1 = `CALL_DFUN(handleEv);
@@ -233,7 +242,7 @@ endfunction
 	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
-`DFUN(GvEv)
+`DFUN(Gv_Ev)
 	`DFUN_RET_TYPE cnt1, cnt2;
 	cnt1 = `CALL_DFUN(handleGv);
 	$write(", ");
@@ -241,14 +250,7 @@ endfunction
 	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
-`DFUN(rSIr14)
-	if(ins.rex_prefix == 0 || ins.rex_prefix[0] == 0) begin
-		$write("%%rsi");
-	end else if(ins.rex_prefix[0] == 1) begin
-		$write("%%r14");
-	end
-	return 0;
-`ENDDFUN
+`DFUNR1$R2(rSI, "%%rsi", r14, "%%r14")
 
 /*
 `DFUN(YbDX)
@@ -268,6 +270,7 @@ endfunction
 `undef ENDDFUN
 `undef CALL_DFUN
 `undef DFUN_RET_TYPE
+`undef DFUNR1$R2
 
 `define D(x) "x": cnt = x(ins, 0, opd_bytes);
 
@@ -278,11 +281,11 @@ function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t 
 	$write("%s\t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
-		`D(EvGv)
-		`D(GvEv)
-		`D(EvIb)
-		`D(EvIz)
-		`D(rSIr14)
+		`D(Ev_Gv)
+		`D(Gv_Ev)
+		`D(Ev_Ib)
+		`D(Ev_Iz)
+		`D(rSI$r14)
 		`D(_)
 		//`D(YbDX)
 		//`D(DXXz)
