@@ -36,9 +36,35 @@ endfunction
 
 /* operand handling utilities */
 
+`define resolve_index(sindex, content)\
+				if(sindex != 3'b100) begin\
+					$write(content, general_register_names({ins.rex_prefix[1],sindex})); \
+				end
+
+`define resolve_base(base, count) \
+		if(base == 3'b101 && opd_bytes[0:1] == 2'b00) begin\
+			print_abs(index+1, opd_bytes, 32); \
+			count += 32/8;\
+		end \
+		else $write("(%s)", general_register_names({ins.rex_prefix[1],base}));
+
 `DFUN(resolve_sib)
-	$write("SIB");
-	return 2; //todo: the interface is wrong
+	/*TODO: TEST properly*/
+	logic[7:0] sib = `pget_bytes(opd_bytes, index, 1);
+	logic[1:0] scale = sib[1:0];
+	logic[2:0] sindex = sib[4:2];
+	logic[2:0] base = sib[7:5];
+	`DFUN_RET_TYPE count = 0;
+	unique case(scale)
+		2'b00:begin `resolve_index(sindex, "(%s)") end
+		2'b01:begin `resolve_index(sindex, "(%s*2)") end
+		2'b10:begin `resolve_index(sindex, "(%s*4)") end
+		2'b11:begin `resolve_index(sindex, "(%s*8)") end
+	endcase
+	//base can have disp_32 when base=101 and mod=0, disp count should be accounted
+	`resolve_base(base,count)
+	//count increment 1 for SIB itself
+	return count + 1; 
 `ENDDFUN
 
 `DFUN(resolve_disp_32)
@@ -60,18 +86,18 @@ function automatic print_abs(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic
 	logic signed[31:0] disp_32;
 	logic signed[63:0] disp_64;
 	logic signed[63:0] b_disp;
-	//TODO:Presently sign extends, implement -ve notation
+	//TODO:At present implements -ve notation, sign extend?
 	unique case(num_bits)
 		8:begin
-			disp_8 = disp[63:56];
+			disp_8 = disp[63:63-8+1];
 			b_disp = disp_8;
 			end	
 		16: begin
-			disp_16 = disp[63:63-16];
+			disp_16 = disp[63:63-16+1];
 			b_disp = disp_16;
 			end
 		32: begin
-			disp_32 = disp[63:63-32];
+			disp_32 = disp[63:63-32+1];
 			b_disp = disp_32;
 			end	
 		64: begin
@@ -80,7 +106,7 @@ function automatic print_abs(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic
 			end	
 	endcase
 	//$write("%0x ",b_disp);
-	$write("%s%0x",`SIGN(b_disp), `UHEX(b_disp));
+	$write("%s0x%0x",`SIGN(b_disp), `UHEX(b_disp));
 endfunction
 
 `DFUN(handleEv)
@@ -93,7 +119,6 @@ endfunction
 				3'b100: num += `CALL_DFUN(resolve_sib);
 				3'b101: num += `CALL_DFUN(resolve_disp_32);
 				default:begin
-						num += 1; //1 for disp
 						$write("(%s) ",general_register_names({rex_b, opd_bytes[5:7]}));
 						end
 			endcase	
@@ -101,7 +126,9 @@ endfunction
 			unique case (opd_bytes[5:7])
 				3'b100: begin //Has SIB
 						num += `CALL_DFUN(resolve_sib);
-						print_abs(2, opd_bytes, 8);
+						//num -> SIB + 1 for modrm byte
+						//Donot print displacemnt if already printed by SIB TODO
+						if(num == 1) print_abs(num+1, opd_bytes, 8);
 						end
 				default:begin //No SIB
 						print_abs(1, opd_bytes, 8);
@@ -113,7 +140,7 @@ endfunction
 			unique case (opd_bytes[5:7])
 				3'b100: begin //Has SIB
 						num += `CALL_DFUN(resolve_sib);
-						print_abs(2, opd_bytes, 32);
+						if(num == 1) print_abs(num+1, opd_bytes, 32);//todo: what if sib already printed the displacemnt
 						end
 				default:begin //No SIB
 						print_abs(1, opd_bytes, 32);
@@ -148,8 +175,14 @@ endfunction
 		return 32/8;
 		end
 	else begin//operand size determined by CS.D??
-		print_abs(index, opd_bytes, 16);
-		return 16/8;
+		if(ins.operand_size_prefix == 0) begin//no override
+			print_abs(index, opd_bytes, 32);
+			return 32/8;
+			end
+		else begin
+			print_abs(index, opd_bytes, 16);
+			return 16/8;
+			end
 		end
 `ENDDFUN
 
