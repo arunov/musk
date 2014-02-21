@@ -1,0 +1,10 @@
+Musk decoder
+------------
+Authors: Yongming Shen (yoshen)
+         Soujanya Shankaranarayana (soshankarana)
+         Arun Olappamanna Vasudevan (aolappamanna)
+
+- <assembly> format is mostly AT&T with operand positions reversed and mnemonics from Intel manual
+- Output is in following format:
+<address>: <assembly>	; <bytes decoded>
+
