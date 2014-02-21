@@ -77,6 +77,8 @@ module Core (
 	always_comb begin
 		if (can_decode) begin : decode_block
 			// cse502 : Decoder here
+			logic[6:0] rip_corr = fetch_offset - decode_offset;
+			$write("%x:", fetch_rip - rip_corr);
 			bytes_decoded_this_cycle = decode(decode_bytes);
 
 			// cse502 : following is an example of how to finish the simulation
