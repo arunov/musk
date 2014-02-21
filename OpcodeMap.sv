@@ -97,6 +97,8 @@
 	`M(8D, lea, Gv_M)
 	`G(8F, 1A, Ev)
 
+	`M(90, nop, _)
+
 	`M(B8, movabs, rAX$r8_Iv)
 	`M(B9, movabs, rCX$r9_Iv)
 	`M(BA, movabs, rDX$r10_Iv)
@@ -106,13 +108,16 @@
 	`M(BE, movabs, rSI$r14_Iv)
 	`M(BF, movabs, rDI$r15_Iv)
 
-
 	`G(C1, 2, Ev_Ib)
 	`M(C3, retq, _)
 	`G(C7, 11, Ev_Iz)
 
 	`G(D1, 2, Ev_1)
 	`G(D3, 2, Ev_CL)
+
+	`M(E8, call, Jz)
+	`M(E9, jmp, Jz)
+	`M(EB, jmp, Jb)
 
 	`G(F7, 3, Ev)
 	`G(FF, 5, _)

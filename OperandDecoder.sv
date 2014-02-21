@@ -34,7 +34,8 @@ endfunction
 `define ENDDFUN endfunction
 `define CALL_DFUN(x) (x(ins, index, opd_bytes))
 
-`define DFUNR1$R2(reg_def, reg_def_print, reg_alt, reg_alt_print) `DFUN(reg_def``$``reg_alt) \
+`define DFUNR1$R2(reg_def, reg_def_print, reg_alt, reg_alt_print) \
+`DFUN(reg_def``$``reg_alt) \
 	if(ins.rex_prefix == 0 || ins.rex_prefix[0] == 0) begin \
 		$write(reg_def_print); \
 	end else if(ins.rex_prefix[0] == 1) begin \
@@ -261,13 +262,23 @@ endfunction
 `ENDDFUN
 
 `DFUNR1$R2(rAX, "%%rax", r8,  "%%r8" )
-`DFUNR1$R2(rBX, "%%rbx", r11, "%%r11")
 `DFUNR1$R2(rCX, "%%rcx", r9,  "%%r9" )
 `DFUNR1$R2(rDX, "%%rdx", r10, "%%r10")
+`DFUNR1$R2(rBX, "%%rbx", r11, "%%r11")
 `DFUNR1$R2(rSP, "%%rsp", r12, "%%r12")
 `DFUNR1$R2(rBP, "%%rbp", r13, "%%r13")
 `DFUNR1$R2(rSI, "%%rsi", r14, "%%r14")
 `DFUNR1$R2(rDI, "%%rdi", r15, "%%r15")
+
+`DFUN(Jz)
+	$write("%%rip:");
+	return `CALL_DFUN(handleIz);
+`ENDDFUN
+
+`DFUN(Jb)
+	$write("%%rip:");
+	return `CALL_DFUN(handleIb);
+`ENDDFUN
 
 /*
 `DFUN(YbDX)
@@ -289,7 +300,7 @@ endfunction
 `undef DFUN_RET_TYPE
 `undef DFUNR1$R2
 
-`define D(x) "x": cnt = x(ins, 0, opd_bytes);
+`define D(x, modrm) "x": begin cnt = x(ins, 0, opd_bytes); ins.operands_use_modrm=(modrm); end
 
 /* If there is error, some value greater than 10 is returned. Otherwise, the number of bytes consumed is returned. */
 function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t ins), logic[0:10*8-1] opd_bytes);
@@ -298,12 +309,21 @@ function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t 
 	$write("%s\t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
-		`D(Ev_Gv)
-		`D(Gv_Ev)
-		`D(Ev_Ib)
-		`D(Ev_Iz)
-		`D(rSI$r14)
-		`D(_)
+		`D(Ev_Gv, 1)
+		`D(Gv_Ev, 1)
+		`D(Ev_Ib, 1)
+		`D(Ev_Iz, 1)
+		`D(rAX$r8, 0)
+		`D(rCX$r9, 0)
+		`D(rDX$r10, 0)
+		`D(rBX$r11, 0)
+		`D(rSP$r12, 0)
+		`D(rBP$r13, 0)
+		`D(rSI$r14, 0)
+		`D(rDI$r15, 0)
+		`D(Jz, 0)
+		`D(Jb, 0)
+		`D(_, 0)
 		//`D(YbDX)
 		//`D(DXXz)
 		default: cnt = 11; // >10 means error
