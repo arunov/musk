@@ -66,16 +66,46 @@
 	`M(5E, pop, rSI$r14)
 	`M(5F, pop, rDI$r15)
 
+	`M(68, push, Iz)
+	`M(69, imul, Gv_Ev_Iz)
+	`M(6A, push, Ib)
+	`M(6B, imul, Gv_Ev_Ib)
+
+	`M(70, jo, Jb)
+	`M(71, jno, Jb)
+	`M(72, jb, Jb)
+	`M(73, jnb, Jb)
+	`M(74, jz, Jb)
+	`M(75, jnz, Jb)
+	`M(76, jbe, Jb)
+	`M(77, jnbe, Jb)
+	`M(78, js, Jb)
+	`M(79, jns, Jb)
+	`M(7A, jp, Jb)
+	`M(7B, jnp, Jb)
+	`M(7C, jl, Jb)
+	`M(7D, jnl, Jb)
+	`M(7E, jle, Jb)
+	`M(7F, jnle, Jb)
+
+	`G(81, 1, Ev_Iz)
+	`G(83, 1, Ev_Ib)
 	`M(85, test, Ev_Gv)
 	`M(87, xchg, Ev_Gv)
 	`M(89, mov, Ev_Gv)
 	`M(8B, mov, Gv_Ev)
+	`M(8D, lea, Gv_M)
+	`G(8F, 1A, Ev)
 
+	`G(C1, 2, Ev_Ib)
 	`M(C3, retq, _)
+	`G(C7, 11, Ev_Iz)
 
-	/* group indirection */
-	`G(81, 1, EvIz)
-	`G(83, 1, EvIb)
+	`G(D1, 2, Ev_1)
+	`G(D3, 2, Ev_CL)
+
+	`G(F7, 3, Ev)
+	`G(FF, 5, _)
 
 `MAP_END
 
@@ -94,8 +124,8 @@
 `undef MAP_BEGIN
 `undef MAP_END
 
-`define GMC(c, g, t, n, m) {24'h``c, 5'h``g, 8'b``t}: begin res.name = "n"; res.mode = "m"; end
-`define GM(g, t, n, m) `GMC(?, g, t, n, m)
+`define GMC(g, t, n, m, c) {24'h``c, 5'h``g, 8'b``t}: begin res.name = "n"; res.mode = "m"; end
+`define GM(g, t, n, m) `GMC(g, t, n, m, ?)
 
 function automatic opcode_struct_t opcode_group_map(logic [0:3*8-1] opcode, logic[4:0] group, logic[7:0] key);
 	opcode_struct_t res = 0;
@@ -121,6 +151,24 @@ function automatic opcode_struct_t opcode_group_map(logic [0:3*8-1] opcode, logi
 	`GM(2, ??100???, shl, _)
 	`GM(2, ??101???, shr, _)
 	`GM(2, ??111???, sar, _)
+
+	`GMC(3, ??000???, test, Ev_Iz, F7)
+	`GM(3, ??010???, not, _)
+	`GM(3, ??011???, neg, _)
+	`GMC(3, ??100???, mul, Ev_rAX, F7)
+	`GMC(3, ??101???, imul, Ev_rAX, F7)
+	`GMC(3, ??110???, div, Ev_rAX, F7)
+	`GMC(3, ??111???, idiv, Ev_rAX, F7)
+
+	`GM(5, ??000???, inc, Ev)
+	`GM(5, ??001???, dec, Ev)
+	`GM(5, ??010???, call, Ev)
+	`GM(5, ??011???, call, Ep)
+	`GM(5, ??100???, jmp, Ev)
+	`GM(5, ??101???, jmp, Mp)
+	`GM(5, ??110???, push, Ev)
+
+	`GMC(11, ??000???, mov, EV_Iz, C7)
 
 	endcase
 	return res;
@@ -161,7 +209,7 @@ function automatic logic[3:0] fill_opcode_struct(logic[0:3*8-1] op_bytes, output
 		modrm = `get_byte(op_bytes, idx);
 		tmp = opcode_group_map(op_struct.opcode, op_struct.group, modrm);
 		op_struct.name = tmp.name;
-		/* tmp.mode overrides op_struct.mode */
+		/* group-map mode overrides opcode-map mode */
 		if (tmp.mode != "_") begin
 			op_struct.mode = tmp.mode;
 		end
