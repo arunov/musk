@@ -348,12 +348,13 @@ endfunction
 `define D(x, modrm) "x": begin cnt = x(ins, 0, opd_bytes); ins.operands_use_modrm=(modrm); end
 
 /* If there is error, some value greater than 10 is returned. Otherwise, the number of bytes consumed is returned. */
-function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t ins), logic[0:10*8-1] opd_bytes);
+function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruction_t ins), input logic[0:10*8-1] opd_bytes);
 	
 	logic[15:0] cnt = 0;
 	$write("%s\t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
+		`D(Ev, 1)
 		`D(Ev_Gv, 1)
 		`D(Gv_Ev, 1)
 		`D(Ev_Ib, 1)
