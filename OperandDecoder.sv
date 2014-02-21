@@ -100,8 +100,10 @@ endfunction
 `undef resolve_base
 
 `DFUN(resolve_disp_32)
-	//$write("%x ",disp);
-	return 0; //todo: the interface is wrong
+	//SIP relative addressing
+	print_abs(1, opd_bytes, 32);
+	$write("(%%rip)");
+	return 4; //todo: the interface is wrong
 `ENDDFUN
 
 `define SIGN(x) (x<0? "-": "")
