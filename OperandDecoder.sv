@@ -3,6 +3,7 @@
 
 `include "MacroUtils.sv"
 `include "DecoderTypes.sv"
+
 typedef logic[0:4*8-1] reg_name_t;
 
 function automatic reg_name_t general_register_names(logic[3:0] index);
@@ -29,53 +30,55 @@ function automatic reg_name_t general_register_names(logic[3:0] index);
 	return map[index];
 endfunction
 
-`define DFUN_RET_TYPE logic[15:0]
-`define DFUN(x) function automatic `DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic[3:0] index, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
+typedef logic[15:0] DFUN_RET_TYPE; 
+
+/* A DFUN returns the number of bytes consumed, EXCLUDING ModRM. Or some value greater than 10 for error */
+`define DFUN(x) \
+function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic[7:0] modrm, logic[3:0] index, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
+
 `define ENDDFUN endfunction
-`define CALL_DFUN(x) (x(ins, index, opd_bytes))
+
+`define CALL_DFUN(x) (x(ins, modrm, index, opd_bytes))
+
+`define COMBO_1_DFUNS(x) \
+`DFUN(x) \
+	return `CALL_DFUN(handle``x); \
+`ENDDFUN
+
+`define COMBO_2_DFUNS(x, y) \
+`DFUN(x``_``y) \
+	DFUN_RET_TYPE cnt = `CALL_DFUN(handle``x); \
+	if (cnt > 10) begin return 11; end \
+	index += cnt; \
+	$write(", "); \
+	return cnt + `CALL_DFUN(handle``y); \
+`ENDDFUN
 
 `define DFUNR1$R2(reg_def, reg_def_print, reg_alt, reg_alt_print) \
-`DFUN(reg_def``$``reg_alt) \
+`DFUN(handle``reg_def``$``reg_alt) \
 	if(ins.rex_prefix == 0 || ins.rex_prefix[0] == 0) begin \
 		$write(reg_def_print); \
 	end else if(ins.rex_prefix[0] == 1) begin \
 		$write(reg_alt_print); \
 	end \
 	return 0; \
-`ENDDFUN
-
-/* define a function similar to rAX$r8_Iv */
-`define DFUNREG_MOD(registers, mode) \
-`DFUN(registers``_``mode) \
-	`DFUN_RET_TYPE cnt1, cnt2;\
-	cnt1 = `CALL_DFUN(registers);\
-	cnt2 = `CALL_DFUN(handle``mode);\
-	return cnt1 + cnt2;\
-`ENDDFUN
-
-`DFUNREG_MOD(rAX$r8,  Iv)
-`DFUNREG_MOD(rBX$r11, Iv)
-`DFUNREG_MOD(rCX$r9,  Iv)
-`DFUNREG_MOD(rDX$r10, Iv)
-`DFUNREG_MOD(rSP$r12, Iv)
-`DFUNREG_MOD(rBP$r13, Iv)
-`DFUNREG_MOD(rSI$r14, Iv)
-`DFUNREG_MOD(rDI$r15, Iv)
-
-`undef DFUNREG_MOD
+`ENDDFUN \
+\
+`COMBO_1_DFUNS(reg_def``$``reg_alt) \
+`COMBO_2_DFUNS(reg_def``$``reg_alt, Iv)
 
 /* operand handling utilities */
 `define resolve_index(sindex, content)\
-				if(sindex != 3'b100) begin\
-					$write(content, general_register_names({ins.rex_prefix[1],sindex})); \
-				end
+	if(sindex != 3'b100) begin\
+		$write(content, general_register_names({ins.rex_prefix[1],sindex})); \
+	end
 
 `define resolve_base(base, count) \
-		if(base == 3'b101 && opd_bytes[0:1] == 2'b00) begin\
-			print_abs(index+1, opd_bytes, 32); \
-			count += 32/8;\
-		end \
-		else $write("(%s)", general_register_names({ins.rex_prefix[1],base}));
+	if(base == 3'b101 && modrm[7:6] == 2'b00) begin\
+		print_abs(index+1, opd_bytes, 32); \
+		count += 4;\
+	end \
+	else $write("(%s)", general_register_names({ins.rex_prefix[1],base}));
 
 `DFUN(resolve_sib)
 	/*TODO: TEST properly*/
@@ -83,7 +86,7 @@ endfunction
 	logic[1:0] scale = sib[1:0];
 	logic[2:0] sindex = sib[4:2];
 	logic[2:0] base = sib[7:5];
-	`DFUN_RET_TYPE count = 0;
+	DFUN_RET_TYPE count = 0;
 	unique case(scale)
 		2'b00:begin `resolve_index(sindex, "(%s)") end
 		2'b01:begin `resolve_index(sindex, "(%s*2)") end
@@ -99,12 +102,14 @@ endfunction
 `undef resolve_index
 `undef resolve_base
 
+/*
 `DFUN(resolve_disp_32)
 	//SIP relative addressing
 	print_abs(1, opd_bytes, 32);
 	$write("(%%rip)");
 	return 4; //todo: the interface is wrong
 `ENDDFUN
+*/
 
 `define SIGN(x) (x<0? "-": "")
 `define UHEX(x) (x<0? -x: x)
@@ -113,7 +118,7 @@ endfunction
 `define reverse_bytes(val, rval, num_bytes) \
 	for(int i=0; i<num_bytes; i++) begin \
 		rval[i*8+:8] = val[((num_bytes-i)*8-1)-:8]; \
-	end \
+	end
 
 /* used for printing both displacmenet and immediate operands*/
 /* verilator lint_off width */
@@ -155,53 +160,59 @@ endfunction
 /* verilator lint_off width *///todo:
 
 `DFUN(handleEv)
-	//bit rex_r = rex[2];
-	bit rex_b = ins.rex_prefix[0];
-	`DFUN_RET_TYPE num = 16'h0;
-	unique case (opd_bytes[0:1])
+
+	logic rex_b = ins.rex_prefix[0];
+	logic[1:0] mod = modrm[7:6];
+	logic[2:0] rm = modrm[2:0];
+	DFUN_RET_TYPE num = 16'h0;
+
+	unique case (mod)
 		2'b00:
-			unique case (opd_bytes[5:7])
+			unique case (rm)
 				3'b100: num += `CALL_DFUN(resolve_sib);
-				3'b101: num += `CALL_DFUN(resolve_disp_32);
+				3'b101: begin 
+						print_abs(index, opd_bytes, 32);
+						num += 4;
+					end
 				default:begin
-						$write("(%s) ",general_register_names({rex_b, opd_bytes[5:7]}));
-						end
+						$write("(%s) ", general_register_names({rex_b, rm}));
+					end
 			endcase	
 		2'b01:
-			unique case (opd_bytes[5:7])
+			unique case (rm)
 				3'b100: begin //Has SIB
 						num += `CALL_DFUN(resolve_sib);
 						//num -> SIB + 1 for modrm byte
 						//Donot print displacemnt if already printed by SIB TODO
-						if(num == 1) print_abs(num+4'h1, opd_bytes, 8);
-						end
+						if(num == 1) print_abs(index + 1, opd_bytes, 8);
+					end
 				default:begin //No SIB
-						print_abs(1, opd_bytes, 8);
-						$write("(%s) ",general_register_names({rex_b, opd_bytes[5:7]}));
+						print_abs(index, opd_bytes, 8);
+						$write("(%s) ",general_register_names({rex_b, rm}));
 						num += 1;//8 bit displacement 
-						end
+					end
 			endcase
 		2'b10:
-			unique case (opd_bytes[5:7])
+			unique case (rm)
 				3'b100: begin //Has SIB
 						num += `CALL_DFUN(resolve_sib);
-						if(num == 1) print_abs(num+4'h1, opd_bytes, 32);//todo: what if sib already printed the displacemnt
+						if(num == 1) print_abs(index + 1, opd_bytes, 32);//todo: what if sib already printed the displacemnt
 						end
 				default:begin //No SIB
-						print_abs(1, opd_bytes, 32);
-						$write("(%s)",general_register_names({rex_b, opd_bytes[5:7]}));
+						print_abs(index, opd_bytes, 32);
+						$write("(%s)",general_register_names({rex_b, rm}));
 						num += 4; //32 bit displacemnt
 						end
 			endcase
 		2'b11:
-			$write("%s",general_register_names({rex_b, opd_bytes[5:7]}));
+			$write("%s",general_register_names({rex_b, rm}));
 	endcase
 	return num;
 `ENDDFUN
 
 `DFUN(handleGv)
 	// Assumption: Gv uses only MODRM.reg
-	$write("%s", general_register_names({ins.rex_prefix[2], opd_bytes[2:4]}));
+	$write("%s", general_register_names({ins.rex_prefix[2], modrm[5:3]}));
 	return 0;
 `ENDDFUN
 
@@ -242,6 +253,13 @@ endfunction
 	return operand_size/5'h8;
 `ENDDFUN
 
+`DFUN(handleM)
+	if (modrm[7:6] == 2'b11) begin
+		return 11;
+	end
+	return `CALL_DFUN(handleEv);
+`ENDDFUN
+
 /*
 `DFUN(handleEp)
 	// (No) - Instruction prefix - REX.W - Effective operand size - pointer size
@@ -267,46 +285,8 @@ endfunction
 `ENDDFUN
 */
 
-/* operand handling entry points */
-`DFUN(Ev)
-	return 1 + `CALL_DFUN(handleEv);
-`ENDDFUN
 
-`DFUN(Ev_Gv)
-	`DFUN_RET_TYPE cnt1, cnt2;
-	cnt1 = `CALL_DFUN(handleEv);
-	$write(", ");
-	cnt2 = `CALL_DFUN(handleGv);
-	return 1 + cnt1 + cnt2;
-`ENDDFUN
-
-`DFUN(Ev_Ib)
-	`DFUN_RET_TYPE cnt1, cnt2;
-	logic[3:0] index; 
-	cnt1 = `CALL_DFUN(handleEv);
-	$write(", ");
-	index = cnt1[3:0] + 1; //immediate comes after all the previous decoded bytes
-	cnt2 = `CALL_DFUN(handleIb);
-	return 1 + cnt1 + cnt2;
-`ENDDFUN
-
-`DFUN(Ev_Iz)
-	`DFUN_RET_TYPE cnt1, cnt2;
-	logic[3:0] index; 
-	cnt1 = `CALL_DFUN(handleEv);
-	$write(", ");
-	index = cnt1[3:0] + 1; //immediate comes after all the previous decoded bytes
-	cnt2 = `CALL_DFUN(handleIz);
-	return 1 + cnt1 + cnt2;
-`ENDDFUN
-
-`DFUN(Gv_Ev)
-	`DFUN_RET_TYPE cnt1, cnt2;
-	cnt1 = `CALL_DFUN(handleGv);
-	$write(", ");
-	cnt2 = `CALL_DFUN(handleEv);
-	return 1 + cnt1 + cnt2;
-`ENDDFUN
+/* R1$R2 handlers and entry points */
 
 `DFUNR1$R2(rAX, "%%rax", r8,  "%%r8" )
 `DFUNR1$R2(rCX, "%%rcx", r9,  "%%r9" )
@@ -316,6 +296,19 @@ endfunction
 `DFUNR1$R2(rBP, "%%rbp", r13, "%%r13")
 `DFUNR1$R2(rSI, "%%rsi", r14, "%%r14")
 `DFUNR1$R2(rDI, "%%rdi", r15, "%%r15")
+
+
+/* operand handling entry points */
+
+`COMBO_1_DFUNS(Ev)
+`COMBO_2_DFUNS(Ev, Gv)
+`COMBO_2_DFUNS(Ev, Iv)
+`COMBO_2_DFUNS(Ev, Ib)
+`COMBO_2_DFUNS(Ev, Iz)
+
+`COMBO_2_DFUNS(Gv, Ev)
+`COMBO_2_DFUNS(Gv, M)
+
 
 `DFUN(Jz)
 	$write("%%rip:");
@@ -327,16 +320,6 @@ endfunction
 	return `CALL_DFUN(handleIb);
 `ENDDFUN
 
-/*
-`DFUN(YbDX)
-	return 0 + `CALL_DFUN(handleYb) + `CALL_DFUN(handleDX);
-`ENDDFUN
-
-`DFUN(DXXz)
-	return 0 + `CALL_DFUN(handleDX) + `CALL_DFUN(handleXz);
-`ENDDFUN
-*/
-
 `DFUN(_)
 	return 0;
 `ENDDFUN
@@ -344,44 +327,52 @@ endfunction
 `undef DFUN
 `undef ENDDFUN
 `undef CALL_DFUN
-`undef DFUN_RET_TYPE
+`undef COMBO_1_DFUNS
+`undef COMBO_2_DFUNS
 `undef DFUNR1$R2
 
-`define D(x, modrm) "x": begin cnt = x(ins, 0, opd_bytes); ins.operands_use_modrm=(modrm); end
+`define FULLD(x, x_str, mm) x_str: \
+begin \
+	ins.operands_use_modrm=(mm); \
+	if (mm) begin modrm = `get_byte(opd_bytes, 0); index++; end \
+	cnt = (mm) + x(ins, modrm, index, opd_bytes); \
+end
+
+`define D(x, mm) `FULLD(x, "x", mm)
+
+`define DRR(r) \
+	`FULLD(r, "r", 0) \
+	`FULLD(r``_Iv, {"r","_Iv"}, 0)
 
 /* If there is error, some value greater than 10 is returned. Otherwise, the number of bytes consumed is returned. */
 function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruction_t ins), input logic[0:10*8-1] opd_bytes);
 	
 	logic[15:0] cnt = 0;
-	$write("%s\t", ins.opcode_struct.name);
+	logic[7:0] modrm = 0;
+	logic[3:0] index = 0;
+
+	$write("%s  \t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
+		/* R$R cases */
+		`DRR(rAX$r8)
+		`DRR(rCX$r9)
+		`DRR(rDX$r10)
+		`DRR(rBX$r11)
+		`DRR(rSP$r12)
+		`DRR(rBP$r13)
+		`DRR(rSI$r14)
+		`DRR(rDI$r15)
+		/* other cases */
 		`D(Ev, 1)
 		`D(Ev_Gv, 1)
-		`D(Gv_Ev, 1)
 		`D(Ev_Ib, 1)
 		`D(Ev_Iz, 1)
-		`D(rAX$r8, 0)
-		`D(rCX$r9, 0)
-		`D(rDX$r10, 0)
-		`D(rBX$r11, 0)
-		`D(rSP$r12, 0)
-		`D(rBP$r13, 0)
-		`D(rSI$r14, 0)
-		`D(rDI$r15, 0)
-		`D(rAX$r8_Iv, 0)
-		`D(rCX$r9_Iv, 0)
-		`D(rDX$r10_Iv, 0)
-		`D(rBX$r11_Iv, 0)
-		`D(rSP$r12_Iv, 0)
-		`D(rBP$r13_Iv, 0)
-		`D(rSI$r14_Iv, 0)
-		`D(rDI$r15_Iv, 0)
+		`D(Gv_Ev, 1)
+		`D(Gv_M, 1)
 		`D(Jz, 0)
 		`D(Jb, 0)
 		`D(_, 0)
-		//`D(YbDX)
-		//`D(DXXz)
 		default: cnt = 11; // >10 means error
 	endcase
 
@@ -393,6 +384,8 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 
 endfunction
 
+`undef FULLD
 `undef D
+`undef DRR
 
 `endif /* _OPERAND_DECODER_ */

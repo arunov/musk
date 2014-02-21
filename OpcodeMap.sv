@@ -130,11 +130,11 @@
 	`M(80, jo, Jz)
 	`M(81, jno, Jz)
 	`M(82, jb, Jz)
-	`M(83, jae, Jz)
-	`M(84, je, Jz)
-	`M(85, jne, Jz)
+	`M(83, jnb, Jz)
+	`M(84, jz, Jz)
+	`M(85, jnz, Jz)
 	`M(86, jbe, Jz)
-	`M(87, ja, Jz)
+	`M(87, jnbe, Jz)
 	`M(88, js, Jz)
 	`M(89, jns, Jz)
 	`M(8A, jp, Jz)
@@ -144,6 +144,7 @@
 	`M(8E, jle, Jz)
 	`M(8F, jnle, Jz)
 
+	`M(AF, imul, Gv_Ev)
 `MAP_END
 
 `MAP_BEGIN(opcode_map3)
