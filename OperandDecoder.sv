@@ -111,7 +111,7 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic
 `ENDDFUN
 */
 
-`define SIGN(x) (x<0? "-": "")
+`define SIGN(x) (x<0? "-": "$")
 `define UHEX(x) (x<0? -x: x)
 
 /* Reverses bytes from val and stores it in rval */
