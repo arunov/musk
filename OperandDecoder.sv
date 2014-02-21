@@ -84,37 +84,51 @@ endfunction
 `define SIGN(x) (x<0? "-": "")
 `define UHEX(x) (x<0? -x: x)
 
-/* Used for printing both displacmenet and immediate operands*/
-/* verilator lint_off UNDRIVEN */
-/* verilator lint_off UNSIGNED */
-/* verilator lint_off WIDTH */
-function automatic print_abs(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits `LINTON(UNUSED));
+/* Reverses bytes from val and stores it in rval */
+`define reverse_bytes(val, rval, num_bytes) \
+	for(int i=0; i<num_bytes; i++) begin \
+		rval[i*8+:8] = val[((num_bytes-i)*8-1)-:8]; \
+	end \
+
+/* used for printing both displacmenet and immediate operands*/
+/* verilator lint_off undriven */
+/* verilator lint_off unsigned */
+/* verilator lint_off width */
+function automatic print_abs(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits );
 	logic[63:0] disp = `pget_bytes(opd_bytes, index, 8);
 	logic signed[7:0] disp_8;
 	logic signed[15:0] disp_16;
+	logic signed[15:0] rdisp_16;
 	logic signed[31:0] disp_32;
+	logic signed[31:0] rdisp_32;
 	logic signed[63:0] disp_64;
+	logic signed[63:0] rdisp_64;
 	logic signed[63:0] b_disp;
-	//TODO:At present implements -ve notation, sign extend?
+	//todo:at present implements -ve notation, sign extend?
 	unique case(num_bits)
-		8:begin
+		 8: begin
 			disp_8 = disp[63:63-8+1];
 			b_disp = disp_8;
 			end	
 		16: begin
 			disp_16 = disp[63:63-16+1];
-			b_disp = disp_16;
+			/* bytes read from opd_bytes stream is in reverse order */
+			`reverse_bytes(disp_16, rdisp_16, 2);
+			b_disp = rdisp_16;
 			end
 		32: begin
 			disp_32 = disp[63:63-32+1];
-			b_disp = disp_32;
+			`reverse_bytes(disp_32, rdisp_32, 4);
+			b_disp = rdisp_32;
 			end	
 		64: begin
 			disp_64 = disp[63:0];
-			b_disp = disp_64;
+			`reverse_bytes(disp_64, rdisp_64, 8);
+			b_disp = rdisp_64;
 			end	
 	endcase
 	//$write("%0x ",b_disp);
+//	`reverse_bytes(b_disp, 8);
 	$write("%s0x%0x",`SIGN(b_disp), `UHEX(b_disp));
 endfunction
 
@@ -178,21 +192,17 @@ endfunction
 
 `DFUN(handleIz)
 	//z- rex_w = 1 => 32 bit, otherwise 16
+	logic[5:0] operand_size;
 	bit rex_w = ins.rex_prefix[3];
-	if(rex_w == 1'b1) begin
-		print_abs(index, opd_bytes, 32);
-		return 32/8;
-		end
+	
+	if(rex_w == 1'b1) operand_size = 32;
 	else begin//operand size determined by CS.D??
-		if(ins.operand_size_prefix == 0) begin//no override
-			print_abs(index, opd_bytes, 32);
-			return 32/8;
-			end
-		else begin
-			print_abs(index, opd_bytes, 16);
-			return 16/8;
-			end
-		end
+		if(ins.operand_size_prefix == 0) operand_size = 32; //no override
+		else operand_size = 16;
+	end
+	
+	print_abs(index, opd_bytes, operand_size);
+	return operand_size/8;
 `ENDDFUN
 
 /*
