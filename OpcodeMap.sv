@@ -189,7 +189,7 @@ endfunction
 
 /* op_struct.name will be zero when something goes wrong */
 /* returns the number of bytes in opcode, excluding ModRM, even if it's used */
-function automatic logic[3:0] fill_opcode_struct(logic[0:3*8-1] op_bytes, output opcode_struct_t op_struct);
+function automatic logic[3:0] fill_opcode_struct(logic[0:4*8-1] op_bytes, output opcode_struct_t op_struct);
 
 	logic[3:0] idx = 0;
 	logic[7:0] modrm = 0;

@@ -61,7 +61,7 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 	fat_instruction_t ins = 0;
 
 	cur_byte = `get_byte(dc_bytes, byte_index);
-
+ 
 	// Handle legacy prefixes, 4 of them at most.
 	repeat (4) begin
 		if (handle_legacy_prefix(cur_byte, ins)) begin
