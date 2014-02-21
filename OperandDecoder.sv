@@ -320,6 +320,7 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 	$write("%s\t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
+		`D(Ev, 1)
 		`D(Ev_Gv, 1)
 		`D(Gv_Ev, 1)
 		`D(Ev_Ib, 1)
