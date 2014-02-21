@@ -44,8 +44,27 @@ endfunction
 	return 0; \
 `ENDDFUN
 
-/* operand handling utilities */
+/* define a function similar to rAX$r8_Iv */
+`define DFUNREG_MOD(registers, mode) \
+`DFUN(registers``_``mode) \
+	`DFUN_RET_TYPE cnt1, cnt2;\
+	cnt1 = `CALL_DFUN(registers);\
+	cnt2 = `CALL_DFUN(handle``mode);\
+	return cnt1 + cnt2;\
+`ENDDFUN
 
+`DFUNREG_MOD(rAX$r8,  Iv)
+`DFUNREG_MOD(rBX$r11, Iv)
+`DFUNREG_MOD(rCX$r9,  Iv)
+`DFUNREG_MOD(rDX$r10, Iv)
+`DFUNREG_MOD(rSP$r12, Iv)
+`DFUNREG_MOD(rBP$r13, Iv)
+`DFUNREG_MOD(rSI$r14, Iv)
+`DFUNREG_MOD(rDI$r15, Iv)
+
+`undef DFUNREG_MOD
+
+/* operand handling utilities */
 `define resolve_index(sindex, content)\
 				if(sindex != 3'b100) begin\
 					$write(content, general_register_names({ins.rex_prefix[1],sindex})); \
@@ -77,6 +96,9 @@ endfunction
 	return count + 1; 
 `ENDDFUN
 
+`undef resolve_index
+`undef resolve_base
+
 `DFUN(resolve_disp_32)
 	//$write("%x ",disp);
 	return 0; //todo: the interface is wrong
@@ -92,10 +114,8 @@ endfunction
 	end \
 
 /* used for printing both displacmenet and immediate operands*/
-/* verilator lint_off undriven */
-/* verilator lint_off unsigned */
 /* verilator lint_off width */
-function automatic print_abs(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits );
+function automatic void print_abs(logic[3:0] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits );
 	logic[63:0] disp = `pget_bytes(opd_bytes, index, 8);
 	logic signed[7:0] disp_8;
 	logic signed[15:0] disp_16;
@@ -128,10 +148,9 @@ function automatic print_abs(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic
 			b_disp = rdisp_64;
 			end	
 	endcase
-	//$write("%0x ",b_disp);
-//	`reverse_bytes(b_disp, 8);
 	$write("%s0x%0x",`SIGN(b_disp), `UHEX(b_disp));
 endfunction
+/* verilator lint_off width *///todo:
 
 `DFUN(handleEv)
 	//bit rex_r = rex[2];
@@ -152,7 +171,7 @@ endfunction
 						num += `CALL_DFUN(resolve_sib);
 						//num -> SIB + 1 for modrm byte
 						//Donot print displacemnt if already printed by SIB TODO
-						if(num == 1) print_abs(num+1, opd_bytes, 8);
+						if(num == 1) print_abs(num+4'h1, opd_bytes, 8);
 						end
 				default:begin //No SIB
 						print_abs(1, opd_bytes, 8);
@@ -164,7 +183,7 @@ endfunction
 			unique case (opd_bytes[5:7])
 				3'b100: begin //Has SIB
 						num += `CALL_DFUN(resolve_sib);
-						if(num == 1) print_abs(num+1, opd_bytes, 32);//todo: what if sib already printed the displacemnt
+						if(num == 1) print_abs(num+4'h1, opd_bytes, 32);//todo: what if sib already printed the displacemnt
 						end
 				default:begin //No SIB
 						print_abs(1, opd_bytes, 32);
@@ -203,7 +222,22 @@ endfunction
 	end
 	
 	print_abs(index, opd_bytes, operand_size);
-	return operand_size/8;
+	return operand_size/5'h8;
+`ENDDFUN
+
+`DFUN(handleIv)
+	//z- rex_w = 1 => 64 bit, otherwise 16/32
+	logic[5:0] operand_size;
+	bit rex_w = ins.rex_prefix[3];
+
+	if(rex_w == 1'b1) operand_size = 64;
+	else begin//operand size determined by CS.D??
+		if(ins.operand_size_prefix == 0) operand_size = 32; //no override
+		else operand_size = 16;
+	end
+
+	print_abs(index, opd_bytes, operand_size);
+	return operand_size/5'h8;
 `ENDDFUN
 
 /*
@@ -332,6 +366,14 @@ function automatic logic[3:0] decode_operands(`LINTOFF_UNUSED(fat_instruction_t 
 		`D(rBP$r13, 0)
 		`D(rSI$r14, 0)
 		`D(rDI$r15, 0)
+		`D(rAX$r8_Iv, 0)
+		`D(rCX$r9_Iv, 0)
+		`D(rDX$r10_Iv, 0)
+		`D(rBX$r11_Iv, 0)
+		`D(rSP$r12_Iv, 0)
+		`D(rBP$r13_Iv, 0)
+		`D(rSI$r14_Iv, 0)
+		`D(rDI$r15_Iv, 0)
 		`D(Jz, 0)
 		`D(Jb, 0)
 		`D(_, 0)
