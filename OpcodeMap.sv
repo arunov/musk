@@ -168,7 +168,7 @@ function automatic opcode_struct_t opcode_group_map(logic [0:3*8-1] opcode, logi
 	`GM(5, ??101???, jmp, Mp)
 	`GM(5, ??110???, push, Ev)
 
-	`GMC(11, ??000???, mov, EV_Iz, C7)
+	`GMC(11, ??000???, mov, Ev_Iz, C7)
 
 	endcase
 	return res;
