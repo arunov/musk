@@ -1,6 +1,10 @@
 (1) Assembly code testing:
+make run
+diff -u -w <(objdump -d -w prog1 | grep '^ ' | cut -f3,3 | sed 's/^ *//g') <(cd obj_dir; ./Vtop ../prog1 | cut -f1,2) | less
 diff -u -w <(objdump -d -w prog2 | grep '^ ' | cut -f3,3 | sed 's/^ *//g') <(cd obj_dir; ./Vtop ../prog2 | cut -f1,2) | less
 
 (2) Decode bytes testing:
+make run
+diff -u -w <(objdump -d -w prog1 | grep '^ ' | cut -f2,2 | sed 's/^ *//g') <(cd obj_dir; ./Vtop ../prog1 | cut -f3,3)
 diff -u -w <(objdump -d -w prog2 | grep '^ ' | cut -f2,2 | sed 's/^ *//g') <(cd obj_dir; ./Vtop ../prog2 | cut -f3,3)
 
