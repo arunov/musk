@@ -15,4 +15,14 @@
 `define eget_bytes(x, i, j) `eget_blocks(x, i, j, 8)
 `define get_byte(x, i) `get_block(x, i, 8)
 
+`define short_print_bytes(buf, size) \
+	for (int i = 0; i < size; i++) begin \
+		if (`get_byte(buf, i) != 0 || i == size - 1) begin \
+			for (int k = i; k < size; k++) begin \
+				$write("%h ", `get_byte(buf, k)); \
+			end \
+			break; \
+		end \
+	end
+
 `endif /*_MACRO_UTILS_ */

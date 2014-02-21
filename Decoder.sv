@@ -49,18 +49,19 @@ endfunction
 	cur_byte = `get_byte(dc_bytes, byte_index);
 
 `define SKIP_AND_EXIT \
-	$display("skip one byte: %h", cur_byte); \
+	$display("skip one byte: %h", `get_byte(dc_bytes_copy, 0)); \
 	return 1;
 
 function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 
+	logic[0:15*8-1] dc_bytes_copy = dc_bytes;
 	logic[3:0] byte_index = 0;
 	logic[3:0] opcode_byte_cnt = 0;
 	logic[3:0] operand_byte_cnt = 0;
 	logic[7:0] cur_byte = 0;
 	fat_instruction_t ins = 0;
 
-	$write("all bytes: %h | ", dc_bytes);
+	$write("bytes: %h: ", dc_bytes);
 
 	cur_byte = `get_byte(dc_bytes, byte_index);
  
@@ -84,21 +85,22 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 
 	// Check if opcode is invalid
 	if (ins.opcode_struct.name == 0) begin
-		$write("invalid opcode: %0h | ", ins.opcode_struct.opcode);
+		$write("invalid opcode: ");
+		`short_print_bytes(ins.opcode_struct.opcode, 3);
+		$write(": ");
 		`SKIP_AND_EXIT;
 	end
-	
+
 	`ADVANCE_DC_POINTER(opcode_byte_cnt)
 
 	// This is to make sure when we take 10 bytes, we don't go out of bound.
 	dc_bytes <<= byte_index * 8;
 	
-	$write("operand bytes: %x { ",dc_bytes[0:10*8-1]);
-
 	operand_byte_cnt = decode_operands(ins, `eget_bytes(dc_bytes, 0, 10));
 
+	$write("\t\t;;;; ");
 	if (operand_byte_cnt > 10) begin
-		$write(" \t} invalid operands | ");
+		$write("invalid operands: %h: ", `eget_bytes(dc_bytes, 0, 10));
 		`SKIP_AND_EXIT
 	end
 
@@ -109,7 +111,9 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 
 	`ADVANCE_DC_POINTER(operand_byte_cnt)
 
-	$display(" \t} %h bytes decoded", byte_index);
+	$write("%d bytes decoded: ", byte_index);
+	`short_print_bytes(dc_bytes_copy, byte_index);
+	$display("");
 
 	return byte_index;
 
