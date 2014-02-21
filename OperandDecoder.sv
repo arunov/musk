@@ -250,7 +250,14 @@ endfunction
 	return 1 + cnt1 + cnt2;
 `ENDDFUN
 
+`DFUNR1$R2(rAX, "%%rax", r8,  "%%r8" )
+`DFUNR1$R2(rBX, "%%rbx", r11, "%%r11")
+`DFUNR1$R2(rCX, "%%rcx", r9,  "%%r9" )
+`DFUNR1$R2(rDX, "%%rdx", r10, "%%r10")
+`DFUNR1$R2(rSP, "%%rsp", r12, "%%r12")
+`DFUNR1$R2(rBP, "%%rbp", r13, "%%r13")
 `DFUNR1$R2(rSI, "%%rsi", r14, "%%r14")
+`DFUNR1$R2(rDI, "%%rdi", r15, "%%r15")
 
 /*
 `DFUN(YbDX)
