@@ -49,6 +49,7 @@ endfunction
 `DFUN(registers``_``mode) \
 	`DFUN_RET_TYPE cnt1, cnt2;\
 	cnt1 = `CALL_DFUN(registers);\
+	$write(", ");\
 	cnt2 = `CALL_DFUN(handle``mode);\
 	return cnt1 + cnt2;\
 `ENDDFUN
