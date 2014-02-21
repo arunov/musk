@@ -126,6 +126,24 @@
 
 `MAP_BEGIN(opcode_map2)
 	`M(05, syscall, _)
+
+	`M(80, jo, Jz)
+	`M(81, jno, Jz)
+	`M(82, jb, Jz)
+	`M(83, jae, Jz)
+	`M(84, je, Jz)
+	`M(85, jne, Jz)
+	`M(86, jbe, Jz)
+	`M(87, ja, Jz)
+	`M(88, js, Jz)
+	`M(89, jns, Jz)
+	`M(8A, jp, Jz)
+	`M(8B, jnp, Jz)
+	`M(8C, jl, Jz)
+	`M(8D, jnl, Jz)
+	`M(8E, jle, Jz)
+	`M(8F, jnle, Jz)
+
 `MAP_END
 
 `MAP_BEGIN(opcode_map3)
