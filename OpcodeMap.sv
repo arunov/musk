@@ -97,12 +97,18 @@
 	`M(8D, lea, Gv_M)
 	`G(8F, 1A, Ev)
 
+	`M(90, nop, _)
+
 	`G(C1, 2, Ev_Ib)
 	`M(C3, retq, _)
 	`G(C7, 11, Ev_Iz)
 
 	`G(D1, 2, Ev_1)
 	`G(D3, 2, Ev_CL)
+
+	`M(E8, call, Jz)
+	`M(E9, jmp, Jz)
+	`M(EB, jmp, Jb)
 
 	`G(F7, 3, Ev)
 	`G(FF, 5, _)

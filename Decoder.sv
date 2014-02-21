@@ -60,6 +60,8 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 	logic[7:0] cur_byte = 0;
 	fat_instruction_t ins = 0;
 
+	$display("all bytes: %h", dc_bytes);
+
 	cur_byte = `get_byte(dc_bytes, byte_index);
  
 	// Handle legacy prefixes, 4 of them at most.
@@ -91,7 +93,8 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 	// This is to make sure when we take 10 bytes, we don't go out of bound.
 	dc_bytes <<= byte_index * 8;
 	
-	$display(" BYTES: %x",dc_bytes[0:10*8-1]);
+	$display("operand bytes: %x",dc_bytes[0:10*8-1]);
+
 	operand_byte_cnt = decode_operands(ins, `eget_bytes(dc_bytes, 0, 10));
 
 	if (operand_byte_cnt > 10) begin
