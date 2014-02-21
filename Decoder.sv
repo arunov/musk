@@ -82,7 +82,7 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
 
 	// Check if opcode is invalid
 	if (ins.opcode_struct.name == 0) begin
-		$write("invalid opcode: %0h", ins.opcode_struct.opcode);
+		$display("invalid opcode: %0h", ins.opcode_struct.opcode);
 		`SKIP_AND_EXIT;
 	end
 	
