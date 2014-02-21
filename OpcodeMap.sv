@@ -84,7 +84,7 @@
 	`M(7A, jp, Jb)
 	`M(7B, jnp, Jb)
 	`M(7C, jl, Jb)
-	`M(7D, jnl, Jb)
+	`M(7D, jge, Jb)
 	`M(7E, jle, Jb)
 	`M(7F, jnle, Jb)
 
@@ -140,7 +140,7 @@
 	`M(8A, jp, Jz)
 	`M(8B, jnp, Jz)
 	`M(8C, jl, Jz)
-	`M(8D, jnl, Jz)
+	`M(8D, jge, Jz)
 	`M(8E, jle, Jz)
 	`M(8F, jnle, Jz)
 

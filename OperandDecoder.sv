@@ -18,8 +18,8 @@ function automatic reg_name_t general_register_names(logic[3:0] index);
 	map[5] = "%rbp";
 	map[6] = "%rsi";
 	map[7] = "%rdi";
-	map[8] = "%r8";
-	map[9] = "%r9";
+	map[8] = "%r8 ";
+	map[9] = "%r9 ";
 	map[10] = "%r10";
 	map[11] = "%r11";
 	map[12] = "%r12";
@@ -47,11 +47,11 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic
 
 `define COMBO_2_DFUNS(x, y) \
 `DFUN(x``_``y) \
-	DFUN_RET_TYPE cnt = `CALL_DFUN(handle``x); \
+	DFUN_RET_TYPE cnt = `CALL_DFUN(handle``y); \
 	if (cnt > 10) begin return 11; end \
 	index += cnt; \
 	$write(", "); \
-	return cnt + `CALL_DFUN(handle``y); \
+	return cnt + `CALL_DFUN(handle``x); \
 `ENDDFUN
 
 `define DFUNR1$R2(reg_def, reg_def_print, reg_alt, reg_alt_print) \
@@ -111,7 +111,7 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic
 `ENDDFUN
 */
 
-`define SIGN(x) (x<0? "-": "")
+`define SIGN(x) (x<0? "-": "$")
 `define UHEX(x) (x<0? -x: x)
 
 /* Reverses bytes from val and stores it in rval */
@@ -172,10 +172,11 @@ endfunction
 				3'b100: num += `CALL_DFUN(resolve_sib);
 				3'b101: begin 
 						print_abs(index, opd_bytes, 32);
+						$write("(%%rip)");
 						num += 4;
 					end
 				default:begin
-						$write("(%s) ", general_register_names({rex_b, rm}));
+						$write("(%s)", general_register_names({rex_b, rm}));
 					end
 			endcase	
 		2'b01:
@@ -188,7 +189,7 @@ endfunction
 					end
 				default:begin //No SIB
 						print_abs(index, opd_bytes, 8);
-						$write("(%s) ",general_register_names({rex_b, rm}));
+						$write("(%s)",general_register_names({rex_b, rm}));
 						num += 1;//8 bit displacement 
 					end
 			endcase
@@ -351,7 +352,7 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 	logic[7:0] modrm = 0;
 	logic[3:0] index = 0;
 
-	$write("%s  \t", ins.opcode_struct.name);
+	$write("%s\t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
 		/* R$R cases */
