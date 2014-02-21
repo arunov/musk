@@ -228,12 +228,12 @@ endfunction
 `DFUN(handleIv)
 	//z- rex_w = 1 => 64 bit, otherwise 16/32
 	logic[5:0] operand_size;
-	bit rex_w = ins.rex_prefix[3];
-
-	if(rex_w == 1'b1) operand_size = 64;
+	logic rex_w = ins.rex_prefix[3];
+	
+	if(rex_w == 1'b1) begin operand_size = 6'd64; end
 	else begin//operand size determined by CS.D??
-		if(ins.operand_size_prefix == 0) operand_size = 32; //no override
-		else operand_size = 16;
+		if(ins.operand_size_prefix == 0) operand_size = 6'd32; //no override
+		else operand_size = 6'd16;
 	end
 
 	print_abs(index, opd_bytes, operand_size);
