@@ -68,7 +68,6 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic
 `COMBO_2_DFUNS(reg_def``$``reg_alt, Iv)
 
 /* operand handling utilities */
-
 `define resolve_index(sindex, content)\
 	if(sindex != 3'b100) begin\
 		$write(content, general_register_names({ins.rex_prefix[1],sindex})); \
@@ -76,7 +75,7 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic
 
 `define resolve_base(base, count) \
 	if(base == 3'b101 && modrm[7:6] == 2'b00) begin\
-		print_abs(index, opd_bytes, 32); \
+		print_abs(index+1, opd_bytes, 32); \
 		count += 4;\
 	end \
 	else $write("(%s)", general_register_names({ins.rex_prefix[1],base}));
@@ -100,10 +99,8 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic
 	return count + 1; 
 `ENDDFUN
 
-`DFUN(resolve_disp_32)
-	//$write("%x ",disp);
-	return 0; //todo: the interface is wrong
-`ENDDFUN
+`undef resolve_index
+`undef resolve_base
 
 `define SIGN(x) (x<0? "-": "")
 `define UHEX(x) (x<0? -x: x)
@@ -115,10 +112,8 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic
 	end
 
 /* used for printing both displacmenet and immediate operands*/
-/* verilator lint_off undriven */
-/* verilator lint_off unsigned */
 /* verilator lint_off width */
-function automatic print_abs(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits );
+function automatic void print_abs(logic[3:0] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits );
 	logic[63:0] disp = `pget_bytes(opd_bytes, index, 8);
 	logic signed[7:0] disp_8;
 	logic signed[15:0] disp_16;
@@ -151,10 +146,9 @@ function automatic print_abs(logic[0:3] index, logic[0:10*8-1]  opd_bytes, logic
 			b_disp = rdisp_64;
 			end	
 	endcase
-	//$write("%0x ",b_disp);
-//	`reverse_bytes(b_disp, 8);
 	$write("%s0x%0x",`SIGN(b_disp), `UHEX(b_disp));
 endfunction
+/* verilator lint_off width *///todo:
 
 `DFUN(handleEv)
 
@@ -167,10 +161,13 @@ endfunction
 		2'b00:
 			unique case (rm)
 				3'b100: num += `CALL_DFUN(resolve_sib);
-				3'b101: num += `CALL_DFUN(resolve_disp_32);
+				3'b101: begin 
+						print_abs(index, opd_bytes, 32);
+						num += 4;
+					end
 				default:begin
 						$write("(%s) ", general_register_names({rex_b, rm}));
-						end
+					end
 			endcase	
 		2'b01:
 			unique case (rm)
@@ -178,22 +175,22 @@ endfunction
 						num += `CALL_DFUN(resolve_sib);
 						//num -> SIB + 1 for modrm byte
 						//Donot print displacemnt if already printed by SIB TODO
-						if(num == 1) print_abs(1, opd_bytes, 8);
-						end
+						if(num == 1) print_abs(index + 1, opd_bytes, 8);
+					end
 				default:begin //No SIB
-						print_abs(0, opd_bytes, 8);
+						print_abs(index, opd_bytes, 8);
 						$write("(%s) ",general_register_names({rex_b, rm}));
 						num += 1;//8 bit displacement 
-						end
+					end
 			endcase
 		2'b10:
 			unique case (rm)
 				3'b100: begin //Has SIB
 						num += `CALL_DFUN(resolve_sib);
-						if(num == 1) print_abs(1, opd_bytes, 32);//todo: what if sib already printed the displacemnt
+						if(num == 1) print_abs(index + 1, opd_bytes, 32);//todo: what if sib already printed the displacemnt
 						end
 				default:begin //No SIB
-						print_abs(0, opd_bytes, 32);
+						print_abs(index, opd_bytes, 32);
 						$write("(%s)",general_register_names({rex_b, rm}));
 						num += 4; //32 bit displacemnt
 						end
@@ -229,11 +226,29 @@ endfunction
 	end
 	
 	print_abs(index, opd_bytes, operand_size);
-	return operand_size/8;
+	return operand_size/5'h8;
 `ENDDFUN
 
 `DFUN(handleIv)
-	return 11;
+	//z- rex_w = 1 => 64 bit, otherwise 16/32
+	logic[5:0] operand_size;
+	logic rex_w = ins.rex_prefix[3];
+	
+	if(rex_w == 1'b1) begin operand_size = 6'd64; end
+	else begin//operand size determined by CS.D??
+		if(ins.operand_size_prefix == 0) operand_size = 6'd32; //no override
+		else operand_size = 6'd16;
+	end
+
+	print_abs(index, opd_bytes, operand_size);
+	return operand_size/5'h8;
+`ENDDFUN
+
+`DFUN(handleM)
+	if (modrm[7:6] == 2'b11) begin
+		return 11;
+	end
+	return `CALL_DFUN(handleEv);
 `ENDDFUN
 
 /*
@@ -277,16 +292,13 @@ endfunction
 /* operand handling entry points */
 
 `COMBO_1_DFUNS(Ev)
-
 `COMBO_2_DFUNS(Ev, Gv)
-
 `COMBO_2_DFUNS(Ev, Iv)
-
 `COMBO_2_DFUNS(Ev, Ib)
-
 `COMBO_2_DFUNS(Ev, Iz)
 
 `COMBO_2_DFUNS(Gv, Ev)
+`COMBO_2_DFUNS(Gv, M)
 
 
 `DFUN(Jz)
@@ -330,7 +342,7 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 	logic[7:0] modrm = 0;
 	logic[3:0] index = 0;
 
-	$write("%s\t", ins.opcode_struct.name);
+	$write("%s  \t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
 		/* R$R cases */
@@ -343,10 +355,12 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 		`DRR(rSI$r14)
 		`DRR(rDI$r15)
 		/* other cases */
+		`D(Ev, 1)
 		`D(Ev_Gv, 1)
-		`D(Gv_Ev, 1)
 		`D(Ev_Ib, 1)
 		`D(Ev_Iz, 1)
+		`D(Gv_Ev, 1)
+		`D(Gv_M, 1)
 		`D(Jz, 0)
 		`D(Jb, 0)
 		`D(_, 0)
