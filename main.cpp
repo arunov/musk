@@ -5,15 +5,8 @@
 # include <verilated_vcd_c.h>	// Trace file format header
 #endif
 
-vluint64_t main_time = 0;	// Current simulation time (64-bit unsigned)
-
-double sc_time_stamp() {
-	return main_time;
-}
-
 int main(int argc, char* argv[]) {
 	Verilated::commandArgs(argc, argv);
-	const int ps_per_clock = 500;
 
 	const char* ramelf = NULL;
 	if (argc>0) ramelf = argv[1];
@@ -49,6 +42,9 @@ int main(int argc, char* argv[]) {
 	TICK(); // 0
 	TICK(); // 1
 	top.reset = 0;
+
+	const char* SHOWCONSOLE = getenv("SHOWCONSOLE");
+	if (SHOWCONSOLE?(atoi(SHOWCONSOLE)!=0):0) sys.console();
 
 	while(main_time/ps_per_clock < 10*K && !Verilated::gotFinish()) {
 		TICK();

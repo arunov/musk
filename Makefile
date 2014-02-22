@@ -1,6 +1,6 @@
 .PHONY: run clean submit
 
-RUNELF=$(PWD)/prog2
+RUNELF=$(PWD)/prog3
 
 TRACE=--trace
 
@@ -23,7 +23,7 @@ clean:
 
 SUBMITTO:=~mferdman/submit/
 submit: clean
-	tar -czvf $(USER).tgz --exclude=.*.sw? --exclude=*~ --exclude=.git .
+	tar -czvf $(USER).tgz --exclude=.*.sw? --exclude=$(USER).tgz* --exclude=*~ --exclude=.git .
 	@gpg --quiet --import submit-pubkey.txt
 	gpg --yes --encrypt --recipient 'submit' $(USER).tgz
 	rm -fv $(SUBMITTO)$(USER)=*.tgz.gpg
