@@ -50,6 +50,8 @@ int main(int argc, char* argv[]) {
 		TICK();
 	}
 
+	top.final();
+
 #if VM_TRACE
 	if (tfp) tfp->close();
 	delete tfp;
