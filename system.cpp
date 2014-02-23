@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <arpa/inet.h>
-#include <ncurses.h>
+#include <ncurses/ncurses.h>
 #include "system.h"
 #include "Vtop_top.h"
 
