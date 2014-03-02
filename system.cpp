@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <arpa/inet.h>
+#include <ncurses/ncurses.h>
 #include "system.h"
 #include "Vtop_top.h"
 
@@ -19,6 +20,12 @@ using namespace std;
 #endif
 
 static __inline__ u_int64_t cse502_be64toh(u_int64_t __x) { return (((u_int64_t)be32toh(__x & (u_int64_t)0xFFFFFFFFULL)) << 32) | ((u_int64_t)be32toh((__x & (u_int64_t)0xFFFFFFFF00000000ULL) >> 32)); }
+
+uint64_t main_time = 0;	// Current simulation time (64-bit unsigned)
+const int ps_per_clock = 500;
+double sc_time_stamp() {
+	return main_time;
+}
 
 uint64_t System::load_elf(const char* filename) {
 	int fd = open(filename,O_RDONLY);
@@ -70,6 +77,7 @@ void System::dram_write_complete(unsigned id, uint64_t address, uint64_t clock_c
 System::System(Vtop* top, uint64_t ramsize, const char* ramelf, int ps_per_clock)
 :	top(top)
 ,	ramsize(ramsize)
+,	show_console(false)
 {
 	ram = (char*)malloc(ramsize);
 	assert(ram);
@@ -82,8 +90,23 @@ System::System(Vtop* top, uint64_t ramsize, const char* ramelf, int ps_per_clock
 	dramsim->setCPUClockSpeed(1000ULL/ps_per_clock*1000*1000*1000);
 }
 
+void System::console() {
+	show_console = true;
+	if (show_console) {
+		initscr();
+		start_color();
+		noecho();
+		cbreak();
+		timeout(0);
+	}
+}
+
 System::~System() {
 	free(ram);
+	if (show_console) {
+		sleep(2);
+		endwin();
+	}
 }
 
 enum {
@@ -104,6 +127,17 @@ void System::tick(int clk) {
 		return;
 	}
 
+	if (main_time % (ps_per_clock * 1000) == 0) {
+		int ch = getch();
+		if (ch != ERR) {
+			if (!(interrupts & (1<<IRQ_KBD))) {
+				interrupts |= (1<<IRQ_KBD);
+				tx_queue.push_back(make_pair(IRQ_KBD,(int)IRQ));
+				keys.push(ch);
+			}
+		}
+	}
+
 	dramsim->update();
 	if (!tx_queue.empty() && top->respack) tx_queue.pop_front();
 	if (!tx_queue.empty()) {
@@ -117,15 +151,36 @@ void System::tick(int clk) {
 		top->resptag = 0xaaaa;
 	}
 
-	if (rx_count) --rx_count;
 	if (top->reqcyc) {
-		if (rx_count) return;
-		bool isWrite = ((top->reqtag >> 12) & 1) == WRITE;
 		cmd = (top->reqtag >> 8) & 0xf;
+		if (rx_count) {
+			switch(cmd) {
+			case MEMORY:
+				*((uint64_t*)(&ram[xfer_addr + (8-rx_count)*8])) = top->req;
+				break;
+			case MMIO:
+				assert(xfer_addr < ramsize);
+				*((uint64_t*)(&ram[xfer_addr])) = top->req;
+				if (show_console)
+					if ((xfer_addr - 0xb8000) < 80*25*2) {
+						int screenpos = xfer_addr - 0xb8000;
+						for(int shift = 0; shift < 8; shift += 2) {
+							int val = (cse502_be64toh(top->req) >> (8*shift)) & 0xffff;
+		//cerr << "val=" << std::hex << val << endl;
+							attron(val & ~0xff);
+							mvaddch(screenpos / 160, screenpos % 160 + shift/2, val & 0xff );
+						}
+						refresh();
+					}
+				break;
+			}
+			--rx_count;
+			return;
+		}
+		bool isWrite = ((top->reqtag >> 12) & 1) == WRITE;
 		if (cmd == MEMORY && isWrite) rx_count = 8;
-		if (cmd == MMIO) rx_count = 1;
+		if (cmd == MMIO && isWrite) rx_count = 1;
 		else rx_count = 0;
-		uint64_t xfer_addr;
 		switch(cmd) {
 		case MEMORY:
  			xfer_addr = top->req;
@@ -135,6 +190,11 @@ void System::tick(int clk) {
 			);
 			//cerr << "add transaction " << std::hex << xfer_addr << " on tag " << top->reqtag << endl;
 			if (!isWrite) addr_to_tag[xfer_addr] = top->reqtag;
+			break;
+		case MMIO:
+			xfer_addr = top->req;
+			assert(!(xfer_addr & 7));
+			if (!isWrite) tx_queue.push_back(make_pair(*((uint64_t*)(&ram[xfer_addr])),top->reqtag)); // hack - real I/O takes time
 			break;
 		default:
 			assert(0);
