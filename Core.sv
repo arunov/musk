@@ -100,4 +100,23 @@ module Core (
 
 		end
 
+	// cse502 : Use the following as a guide to print the Register File contents.
+	final begin
+		$display("RAX = %x", 0);
+		$display("RBX = %x", 0);
+		$display("RCX = %x", 0);
+		$display("RDX = %x", 0);
+		$display("RSI = %x", 0);
+		$display("RDI = %x", 0);
+		$display("RBP = %x", 0);
+		$display("RSP = %x", 0);
+		$display("R8 = %x", 0);
+		$display("R9 = %x", 0);
+		$display("R10 = %x", 0);
+		$display("R11 = %x", 0);
+		$display("R12 = %x", 0);
+		$display("R13 = %x", 0);
+		$display("R14 = %x", 0);
+		$display("R15 = %x", 0);
+	end
 endmodule
