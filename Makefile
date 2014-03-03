@@ -19,6 +19,9 @@ obj_dir/Vtop.mk: $(VFILES) $(CFILES)
 run: obj_dir/Vtop
 	cd obj_dir/ && ./Vtop $(RUNELF)
 
+prog: obj_dir/Vtop
+	cd obj_dir/ && ./Vtop ../prog$(n)
+
 clean:
 	rm -rf obj_dir/
 

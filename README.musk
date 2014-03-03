@@ -7,4 +7,7 @@ Authors: Yongming Shen (yoshen)
 - <assembly> format is mostly AT&T with operand positions reversed and mnemonics from Intel manual
 - Output is in following format:
 <address>: <assembly>	; <bytes decoded>
+- To run program prog<n>, do:
+make prog n=<n>
+E.g.: make prog n=1
 
