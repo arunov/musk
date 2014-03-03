@@ -315,7 +315,7 @@ endfunction
 
 `COMBO_2_DFUNS(Gv, Ev)
 `COMBO_2_DFUNS(Gv, M)
-
+`COMBO_2_DFUNS(Ev, rAX)
 `COMBO_2_DFUNS(rAX, Iz)
 
 `DFUN(Jz)
@@ -379,6 +379,7 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 		`D(Ev_Iz, 1)
 		`D(Gv_Ev, 1)
 		`D(Gv_M, 1)
+		`D(Ev_rAX, 1)
 		`D(rAX_Iz, 0)
 		`D(Jz, 0)
 		`D(Jb, 0)
