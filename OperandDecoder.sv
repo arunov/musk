@@ -67,6 +67,11 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic
 `COMBO_1_DFUNS(reg_def``$``reg_alt) \
 `COMBO_2_DFUNS(reg_def``$``reg_alt, Iv)
 
+`define DFUNR(regR, regR_print) \
+`DFUN(handle``regR) \
+	$write(regR_print); \
+`ENDDFUN
+
 /* operand handling utilities */
 `define resolve_index(sindex, content)\
 	if(sindex != 3'b100) begin\
@@ -260,6 +265,8 @@ endfunction
 	return `CALL_DFUN(handleEv);
 `ENDDFUN
 
+`LINTOFF(UNDRIVEN) `DFUNR(rAX, "%%rax") `LINTON(UNDRIVEN)
+
 /*
 `DFUN(handleEp)
 	// (No) - Instruction prefix - REX.W - Effective operand size - pointer size
@@ -309,6 +316,7 @@ endfunction
 `COMBO_2_DFUNS(Gv, Ev)
 `COMBO_2_DFUNS(Gv, M)
 
+`COMBO_2_DFUNS(rAX, Iz)
 
 `DFUN(Jz)
 	$write("%%rip:");
@@ -330,6 +338,7 @@ endfunction
 `undef COMBO_1_DFUNS
 `undef COMBO_2_DFUNS
 `undef DFUNR1$R2
+`undef DFUNR
 
 `define FULLD(x, x_str, mm) x_str: \
 begin \
@@ -370,6 +379,7 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 		`D(Ev_Iz, 1)
 		`D(Gv_Ev, 1)
 		`D(Gv_M, 1)
+		`D(rAX_Iz, 0)
 		`D(Jz, 0)
 		`D(Jb, 0)
 		`D(_, 0)
