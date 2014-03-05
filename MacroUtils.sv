@@ -15,6 +15,10 @@
 `define eget_bytes(x, i, j) `eget_blocks(x, i, j, 8)
 `define get_byte(x, i) `get_block(x, i, 8)
 
+`define pget_64s(x, i, p) `pget_blocks(x, i, p, 64)
+`define eget_64s(x, i, j) `eget_blocks(x, i, j, 64)
+`define get_64(x, i) `get_block(x, i, 64)
+
 `define short_print_bytes(buf, size) \
 	for (int i = 0; i < size; i++) begin \
 		if (`get_byte(buf, i) != 0 || i == size - 1) begin \

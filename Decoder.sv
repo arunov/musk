@@ -52,14 +52,15 @@ endfunction
 	$display("skip one byte: %h", `get_byte(dc_bytes_copy, 0)); \
 	return 1;
 
-function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes);
+function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t ins);
 
 	logic[0:15*8-1] dc_bytes_copy = dc_bytes;
 	logic[3:0] byte_index = 0;
 	logic[3:0] opcode_byte_cnt = 0;
 	logic[3:0] operand_byte_cnt = 0;
 	logic[7:0] cur_byte = 0;
-	fat_instruction_t ins = 0;
+
+	ins = 0;
 
 	//$write("bytes: %h: ", dc_bytes);
 
