@@ -6,18 +6,16 @@
 
 typedef logic[0:4*8-1] reg_name_t;
 
-function automatic reg_name_t general_register_names(logic[3:0] index);
-
-	reg_name_t[0:15] map = 0;
-
-	map[0] = "%rax";
-	map[1] = "%rcx";
-	map[2] = "%rdx";
-	map[3] = "%rbx";
-	map[4] = "%rsp";
-	map[5] = "%rbp";
-	map[6] = "%rsi";
-	map[7] = "%rdi";
+function automatic reg_name_t[0:15] get_register_name_map();
+    reg_name_t[0:15] map = 0;
+	map[0] = "%rAX";
+	map[1] = "%rCX";
+	map[2] = "%rDX";
+	map[3] = "%rBX";
+	map[4] = "%rSP";
+	map[5] = "%rBP";
+	map[6] = "%rSI";
+	map[7] = "%rDI";
 	map[8] = "%r8";
 	map[9] = "%r9";
 	map[10] = "%r10";
@@ -26,8 +24,23 @@ function automatic reg_name_t general_register_names(logic[3:0] index);
 	map[13] = "%r13";
 	map[14] = "%r14";
 	map[15] = "%r15";
+    return map;
+endfunction
 
+function automatic reg_name_t general_register_names(logic[3:0] index);
+	reg_name_t[0:15] map = get_register_name_map();
 	return map[index];
+endfunction
+
+/* Returns id corresponding to the given register name */
+function automatic logic[3:0] get_reg_id(reg_name_t regname);
+    reg_name_t[0:15] map = get_register_name_map();
+    logic[4:0] i;
+    for(i = 0; i <= 15; i++)
+        if(map[i[3:0]] == regname)
+            return i[3:0];
+    $display("ERROR: Register mapping for %s not found", regname);
+    //TODO: return what? ERR?
 endfunction
 
 typedef logic[15:0] DFUN_RET_TYPE; 
@@ -40,55 +53,63 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
 
 `define CALL_DFUN(x) (x(ins, modrm, index, opd_bytes, opbuff))
 
-`define COMBO_1_DFUNS(x) \
-`DFUN(x) \
-	return `CALL_DFUN(handle``x); \
+/* TODO: move to handler_macros.sv */
+
+`define COMBO_1_DFUNS(x)            \
+`DFUN(x)                            \
+    DFUN_RET_TYPE cnt;              \
+	cnt = `CALL_DFUN(handle``x);    \
+    ins.opa = opbuff;               \
+    return cnt;                     \
 `ENDDFUN
 
 `define COMBO_2_DFUNS(x, y) \
-`DFUN(x``_``y)                          \
-    DFUN_RET_TYPE cnt;                  \
-	cnt = `CALL_DFUN(handle``x);        \
-    /* first operand values are stored in fat_ins structure */ \
-    ins.opa = opbuff;                   \
-	if (cnt > 10) begin return 11; end  \
-	index += cnt;                       \
-	$write(", ");                       \
-    cnt += `CALL_DFUN(handle``y);       \
-    /* Seconds operand values are stored in fat_ins structure */ \
-    ins.opb = opbuff;                   \
-    return cnt;                         \
+`DFUN(x``_``y)                                                  \
+    DFUN_RET_TYPE cnt;                                          \
+	cnt = `CALL_DFUN(handle``x);                                \
+    /* first operand values are stored in fat_ins structure */  \
+    ins.opa = opbuff;                                           \
+	if (cnt > 10) begin return 11; end                          \
+	index += cnt;                                               \
+	$write(", ");                                               \
+    cnt += `CALL_DFUN(handle``y);                               \
+    /* Second operand values are stored in fat_ins structure */ \
+    ins.opb = opbuff;                                           \
+    return cnt;                                                 \
 `ENDDFUN
 
 `define DFUNR1$R2(reg_def, reg_def_print, reg_alt, reg_alt_print) \
-`DFUN(handle``reg_def``$``reg_alt) \
+`DFUN(handle``reg_def``$``reg_alt)                          \
 	if(ins.rex_prefix == 0 || ins.rex_prefix[0] == 0) begin \
-		$write(reg_def_print); \
-	end else if(ins.rex_prefix[0] == 1) begin \
-		$write(reg_alt_print); \
-	end \
-	return 0; \
-`ENDDFUN \
-\
-`COMBO_1_DFUNS(reg_def``$``reg_alt) \
+        `update_opbuff_reg(opbuff, get_reg_id("%reg_def"));                   \
+		$write(reg_def_print);                              \
+	end else if(ins.rex_prefix[0] == 1) begin               \
+        `update_opbuff_reg(opbuff, get_reg_id("%reg_alt"));                   \
+		$write(reg_alt_print);                              \
+	end                                                     \
+	return 0;                                               \
+`ENDDFUN                                                    \
+                                                            \
+`COMBO_1_DFUNS(reg_def``$``reg_alt)                         \
 `COMBO_2_DFUNS(reg_def``$``reg_alt, Iv)
 
-`define DFUNR(regR, regR_print) \
-`DFUN(handle``regR) \
-	$write(regR_print); \
+`define DFUNR(regR, regR_print)                             \
+`DFUN(handle``regR)                                         \
+    `update_opbuff_reg(opbuff, get_reg_id("%regR"))                          \
+	$write(regR_print);                                     \
 `ENDDFUN
 
 /* operand handling utilities */
-`define resolve_index(sindex, content)\
-	if(sindex != 3'b100) begin\
+`define resolve_index(sindex, content)                                      \
+	if(sindex != 3'b100) begin                                              \
 		$write(content, general_register_names({ins.rex_prefix[1],sindex})); \
 	end
 
-`define resolve_base(base, count) \
-	if(base == 3'b101 && modrm[7:6] == 2'b00) begin\
-		print_abs(index+1, opd_bytes, 32); \
-		count += 4;\
-	end \
+`define resolve_base(base, count)                           \
+	if(base == 3'b101 && modrm[7:6] == 2'b00) begin         \
+		print_abs(index+1, opd_bytes, 32);                  \
+		count += 4;                                         \
+	end                                                     \
 	else $write("(%s)", general_register_names({ins.rex_prefix[1],base}));
 
 `DFUN(resolve_sib)
@@ -179,7 +200,8 @@ endfunction
 
 `define update_opbuff_imm(opbuff, immediate)\
     opbuff.immediate = immediate;\
-    opbuff.bitmap[`IMM] = 1;
+    opbuff.bitmap[`IMM] = 1;\
+
 
 `DFUN(handleEv)
 
@@ -246,7 +268,8 @@ endfunction
 /*  We might not need index in DFUn */
 
 `DFUN(handleIb)
-	print_abs(index, opd_bytes, 8);
+	logic[63:0] immediate = print_abs(index, opd_bytes, 8);
+    `update_opbuff_imm(opbuff, immediate);
 	return 1; //1 byte
 `ENDDFUN
 
@@ -254,6 +277,7 @@ endfunction
 	//z- rex_w = 1 => 32 bit, otherwise 16
 	logic[5:0] operand_size;
 	bit rex_w = ins.rex_prefix[3];
+    logic[63:0] immediate;
 	
 	if(rex_w == 1'b1) operand_size = 32;
 	else begin//operand size determined by CS.D??
@@ -261,7 +285,8 @@ endfunction
 		else operand_size = 16;
 	end
 	
-	print_abs(index, opd_bytes, operand_size);
+	immediate = print_abs(index, opd_bytes, operand_size);
+    `update_opbuff_imm(opbuff, immediate);
 	return operand_size/5'h8;
 `ENDDFUN
 
@@ -413,7 +438,7 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 		`D(_, 0)
 		default: cnt = 11; // >10 means error
 	endcase
-    $display("opa:%x, opb:%x", ins.opa, ins.opb);
+    $display("\n rega:%0d imma:%0x regb:%0d immb:%0x",ins.opa.reg_id, ins.opa.immediate, ins.opb.reg_id, ins.opb.immediate);
 
 	if (cnt > 10) begin
 		return 11;
@@ -426,5 +451,7 @@ endfunction
 `undef FULLD
 `undef D
 `undef DRR
+`undef REG
+`undef IMM
 
 `endif /* _OPERAND_DECODER_ */
