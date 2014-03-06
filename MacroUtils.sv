@@ -6,6 +6,7 @@
 
 `define LINTOFF_X(x, y) `LINTOFF(x) y `LINTON(x)
 `define LINTOFF_UNUSED(x) `LINTOFF_X(UNUSED, x)
+`define LINTOFF_UNOPTFLAT(x) `LINTOFF_X(UNOPTFLAT, x)
 
 `define pget_blocks(x, i, p, z) x[(i) * (z) +: (p) * (z)]
 `define eget_blocks(x, i, j, z) `pget_blocks(x, i, j - i, z)
@@ -28,5 +29,7 @@
 			break; \
 		end \
 	end
+
+`define get_reg_in_file(x) x*64+:64
 
 `endif /*_MACRO_UTILS_ */
