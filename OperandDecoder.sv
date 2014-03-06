@@ -213,7 +213,7 @@ endfunction
 	logic[1:0] mod = modrm[7:6];
 	logic[2:0] rm = modrm[2:0];
 	DFUN_RET_TYPE num = 16'h0;
-    logic register = {rex_b, rm};
+    logic[3:0] register = {rex_b, rm};
 
 	unique case (mod)
 		2'b00:
@@ -265,7 +265,6 @@ endfunction
     logic[3:0] register = {ins.rex_prefix[2], modrm[5:3]};
 	// Assumption: Gv uses only MODRM.reg
     `update_opbuff_reg(opbuff, register);
-//    $display("Register is:%d - %s",register, general_register_names(register));
 	$write("%s", general_register_names(register));
 	return 0;
 `ENDDFUN
