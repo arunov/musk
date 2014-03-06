@@ -34,11 +34,11 @@ typedef logic[15:0] DFUN_RET_TYPE;
 
 /* A DFUN returns the number of bytes consumed, EXCLUDING ModRM. Or some value greater than 10 for error */
 `define DFUN(x) \
-function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic[7:0] modrm, logic[3:0] index, logic[0:10*8-1] opd_bytes `LINTON(UNUSED));
+function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, logic[7:0] modrm, logic[3:0] index, logic[0:10*8-1] opd_bytes,inout decode_buff_t opbuff `LINTON(UNUSED));
 
 `define ENDDFUN endfunction
 
-`define CALL_DFUN(x) (x(ins, modrm, index, opd_bytes))
+`define CALL_DFUN(x) (x(ins, modrm, index, opd_bytes, opbuff))
 
 `define COMBO_1_DFUNS(x) \
 `DFUN(x) \
@@ -46,12 +46,18 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic
 `ENDDFUN
 
 `define COMBO_2_DFUNS(x, y) \
-`DFUN(x``_``y) \
-	DFUN_RET_TYPE cnt = `CALL_DFUN(handle``x); \
-	if (cnt > 10) begin return 11; end \
-	index += cnt; \
-	$write(", "); \
-	return cnt + `CALL_DFUN(handle``y); \
+`DFUN(x``_``y)                          \
+    DFUN_RET_TYPE cnt;                  \
+	cnt = `CALL_DFUN(handle``x);        \
+    /* first operand values are stored in fat_ins structure */ \
+    ins.opa = opbuff;                   \
+	if (cnt > 10) begin return 11; end  \
+	index += cnt;                       \
+	$write(", ");                       \
+    cnt += `CALL_DFUN(handle``y);       \
+    /* Seconds operand values are stored in fat_ins structure */ \
+    ins.opb = opbuff;                   \
+    return cnt;                         \
 `ENDDFUN
 
 `define DFUNR1$R2(reg_def, reg_def_print, reg_alt, reg_alt_print) \
@@ -127,7 +133,7 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED) fat_instruction_t ins, logic
 
 /* used for printing both displacmenet and immediate operands*/
 /* verilator lint_off width */
-function automatic void print_abs(logic[3:0] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits );
+function automatic logic signed[63:0] print_abs(logic[3:0] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits );
 	logic[63:0] disp = `pget_bytes(opd_bytes, index, 8);
 	logic signed[7:0] disp_8;
 	logic signed[15:0] disp_16;
@@ -161,8 +167,19 @@ function automatic void print_abs(logic[3:0] index, logic[0:10*8-1]  opd_bytes, 
 			end	
 	endcase
 	$write("%s0x%0x",`SIGN(b_disp), `UHEX(b_disp));
+    return b_disp;
 endfunction
 /* verilator lint_off width *///todo:
+`define REG 0
+`define IMM 1
+
+`define update_opbuff_reg(opbuff, register)\
+    opbuff.reg_id = register;\
+    opbuff.bitmap[`REG] = 1;\
+
+`define update_opbuff_imm(opbuff, immediate)\
+    opbuff.immediate = immediate;\
+    opbuff.bitmap[`IMM] = 1;
 
 `DFUN(handleEv)
 
@@ -170,6 +187,7 @@ endfunction
 	logic[1:0] mod = modrm[7:6];
 	logic[2:0] rm = modrm[2:0];
 	DFUN_RET_TYPE num = 16'h0;
+    logic register = {rex_b, rm};
 
 	unique case (mod)
 		2'b00:
@@ -180,7 +198,7 @@ endfunction
 						num += 4;
 					end
 				default:begin
-						$write("(%s) ", general_register_names({rex_b, rm}));
+						$write("(%s) ", general_register_names(register));
 					end
 			endcase	
 		2'b01:
@@ -193,7 +211,7 @@ endfunction
 					end
 				default:begin //No SIB
 						print_abs(index, opd_bytes, 8);
-						$write("(%s) ",general_register_names({rex_b, rm}));
+						$write("(%s) ",general_register_names(register));
 						num += 1;//8 bit displacement 
 					end
 			endcase
@@ -205,19 +223,23 @@ endfunction
 						end
 				default:begin //No SIB
 						print_abs(index, opd_bytes, 32);
-						$write("(%s)",general_register_names({rex_b, rm}));
+						$write("(%s)",general_register_names(register));
 						num += 4; //32 bit displacemnt
 						end
 			endcase
-		2'b11:
-			$write("%s",general_register_names({rex_b, rm}));
+		2'b11: begin
+                `update_opbuff_reg(opbuff, register);
+			    $write("%s",general_register_names(register));
+            end
 	endcase
 	return num;
 `ENDDFUN
 
 `DFUN(handleGv)
+    logic[3:0] register = {ins.rex_prefix[2], modrm[5:3]};
 	// Assumption: Gv uses only MODRM.reg
-	$write("%s", general_register_names({ins.rex_prefix[2], modrm[5:3]}));
+    `update_opbuff_reg(opbuff, register);
+	$write("%s", general_register_names(register));
 	return 0;
 `ENDDFUN
 
@@ -247,14 +269,15 @@ endfunction
 	//z- rex_w = 1 => 64 bit, otherwise 16/32
 	logic[5:0] operand_size;
 	logic rex_w = ins.rex_prefix[3];
+    logic[63:0] immediate;
 	
 	if(rex_w == 1'b1) begin operand_size = 6'd64; end
 	else begin//operand size determined by CS.D??
 		if(ins.operand_size_prefix == 0) operand_size = 6'd32; //no override
 		else operand_size = 6'd16;
 	end
-
-	print_abs(index, opd_bytes, operand_size);
+    immediate = print_abs(index, opd_bytes, operand_size);
+    `update_opbuff_imm(opbuff, immediate);
 	return operand_size/5'h8;
 `ENDDFUN
 
@@ -344,7 +367,7 @@ endfunction
 begin \
 	ins.operands_use_modrm=(mm); \
 	if (mm) begin modrm = `get_byte(opd_bytes, 0); index++; end \
-	cnt = (mm) + x(ins, modrm, index, opd_bytes); \
+	cnt = (mm) + x(ins, modrm, index, opd_bytes, opbuff); \
 end
 
 `define D(x, mm) `FULLD(x, "x", mm)
@@ -359,6 +382,10 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 	logic[15:0] cnt = 0;
 	logic[7:0] modrm = 0;
 	logic[3:0] index = 0;
+    decode_buff_t opbuff; /* I hate to declare it here! MACRO mess!*/
+    opbuff.reg_id = 0;
+    opbuff.immediate = 0;
+    opbuff.bitmap = 0;
 
 	$write("%s  \t", ins.opcode_struct.name);
 
@@ -386,6 +413,7 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 		`D(_, 0)
 		default: cnt = 11; // >10 means error
 	endcase
+    $display("opa:%x, opb:%x", ins.opa, ins.opb);
 
 	if (cnt > 10) begin
 		return 11;
