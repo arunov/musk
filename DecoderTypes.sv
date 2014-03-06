@@ -19,6 +19,12 @@ typedef struct packed{
     logic[1:0] bitmap;
 } decode_buff_t;
 
+`define REG 0
+`define IMM 1
+
+`define REG_BITMAP 2'b01
+`define IMM_BITMAP 2'b10
+
 typedef struct packed {
 	logic[7:0] lock_repeat_prefix;
 	logic[7:0] segment_branch_prefix;
