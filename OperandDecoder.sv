@@ -8,14 +8,14 @@ typedef logic[0:4*8-1] reg_name_t;
 
 function automatic reg_name_t[0:15] get_register_name_map();
     reg_name_t[0:15] map = 0;
-	map[0] = "%rAX";
-	map[1] = "%rCX";
-	map[2] = "%rDX";
-	map[3] = "%rBX";
-	map[4] = "%rSP";
-	map[5] = "%rBP";
-	map[6] = "%rSI";
-	map[7] = "%rDI";
+	map[0] = "%rax";
+	map[1] = "%rcx";
+	map[2] = "%rdx";
+	map[3] = "%rbx";
+	map[4] = "%rsp";
+	map[5] = "%rbp";
+	map[6] = "%rsi";
+	map[7] = "%rdi";
 	map[8] = "%r8";
 	map[9] = "%r9";
 	map[10] = "%r10";
@@ -63,12 +63,16 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
     return cnt;                     \
 `ENDDFUN
 
+`define reset_opbuff() \
+    opbuff = 0;
+
 `define COMBO_2_DFUNS(x, y) \
 `DFUN(x``_``y)                                                  \
     DFUN_RET_TYPE cnt;                                          \
 	cnt = `CALL_DFUN(handle``x);                                \
     /* first operand values are stored in fat_ins structure */  \
     ins.opa = opbuff;                                           \
+    `reset_opbuff();                                            \
 	if (cnt > 10) begin return 11; end                          \
 	index += cnt;                                               \
 	$write(", ");                                               \
@@ -261,6 +265,7 @@ endfunction
     logic[3:0] register = {ins.rex_prefix[2], modrm[5:3]};
 	// Assumption: Gv uses only MODRM.reg
     `update_opbuff_reg(opbuff, register);
+//    $display("Register is:%d - %s",register, general_register_names(register));
 	$write("%s", general_register_names(register));
 	return 0;
 `ENDDFUN
@@ -313,7 +318,7 @@ endfunction
 	return `CALL_DFUN(handleEv);
 `ENDDFUN
 
-`LINTOFF(UNDRIVEN) `DFUNR(rAX, "%%rax") `LINTON(UNDRIVEN)
+`LINTOFF(UNDRIVEN) `DFUNR(rax, "%%rax") `LINTON(UNDRIVEN)
 
 /*
 `DFUN(handleEp)
@@ -343,14 +348,14 @@ endfunction
 
 /* R1$R2 handlers and entry points */
 
-`DFUNR1$R2(rAX, "%%rax", r8,  "%%r8" )
-`DFUNR1$R2(rCX, "%%rcx", r9,  "%%r9" )
-`DFUNR1$R2(rDX, "%%rdx", r10, "%%r10")
-`DFUNR1$R2(rBX, "%%rbx", r11, "%%r11")
-`DFUNR1$R2(rSP, "%%rsp", r12, "%%r12")
-`DFUNR1$R2(rBP, "%%rbp", r13, "%%r13")
-`DFUNR1$R2(rSI, "%%rsi", r14, "%%r14")
-`DFUNR1$R2(rDI, "%%rdi", r15, "%%r15")
+`DFUNR1$R2(rax, "%%rax", r8,  "%%r8" )
+`DFUNR1$R2(rcx, "%%rcx", r9,  "%%r9" )
+`DFUNR1$R2(rdx, "%%rdx", r10, "%%r10")
+`DFUNR1$R2(rbx, "%%rbx", r11, "%%r11")
+`DFUNR1$R2(rsp, "%%rsp", r12, "%%r12")
+`DFUNR1$R2(rbp, "%%rbp", r13, "%%r13")
+`DFUNR1$R2(rsi, "%%rsi", r14, "%%r14")
+`DFUNR1$R2(rdi, "%%rdi", r15, "%%r15")
 
 
 /* operand handling entry points */
@@ -363,8 +368,8 @@ endfunction
 
 `COMBO_2_DFUNS(Gv, Ev)
 `COMBO_2_DFUNS(Gv, M)
-`COMBO_2_DFUNS(Ev, rAX)
-`COMBO_2_DFUNS(rAX, Iz)
+`COMBO_2_DFUNS(Ev, rax)
+`COMBO_2_DFUNS(rax, Iz)
 
 `DFUN(Jz)
 	$write("%%rip:");
@@ -416,14 +421,14 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 
 	case (ins.opcode_struct.mode)
 		/* R$R cases */
-		`DRR(rAX$r8)
-		`DRR(rCX$r9)
-		`DRR(rDX$r10)
-		`DRR(rBX$r11)
-		`DRR(rSP$r12)
-		`DRR(rBP$r13)
-		`DRR(rSI$r14)
-		`DRR(rDI$r15)
+		`DRR(rax$r8)
+		`DRR(rcx$r9)
+		`DRR(rdx$r10)
+		`DRR(rbx$r11)
+		`DRR(rsp$r12)
+		`DRR(rbp$r13)
+		`DRR(rsi$r14)
+		`DRR(rdi$r15)
 		/* other cases */
 		`D(Ev, 1)
 		`D(Ev_Gv, 1)
@@ -431,14 +436,14 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
 		`D(Ev_Iz, 1)
 		`D(Gv_Ev, 1)
 		`D(Gv_M, 1)
-		`D(Ev_rAX, 1)
-		`D(rAX_Iz, 0)
+		`D(Ev_rax, 1)
+		`D(rax_Iz, 0)
 		`D(Jz, 0)
 		`D(Jb, 0)
 		`D(_, 0)
 		default: cnt = 11; // >10 means error
 	endcase
-    $display("\n rega:%0d imma:%0x regb:%0d immb:%0x",ins.opa.reg_id, ins.opa.immediate, ins.opb.reg_id, ins.opb.immediate);
+//    $display("\n rega:%0d imma:%0x opabitmap:%0x regb:%0d immb:%0x opbbitmap:%0x",ins.opa.reg_id, ins.opa.immediate, ins.opa.bitmap, ins.opb.reg_id, ins.opb.immediate, ins.opb.bitmap);
 
 	if (cnt > 10) begin
 		return 11;

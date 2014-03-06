@@ -27,7 +27,9 @@ function automatic logic ALU(
 	case (fat_inst.opcode_struct.name)
 		`dobinop(imul, *)
 		`dobinop(add, +)
+		`dobinop(or, |)
 		"mov": reg_file_out[`get_reg_in_file(fat_inst.opa.reg_id)] = valb;
+		"movabs": reg_file_out[`get_reg_in_file(fat_inst.opa.reg_id)] = valb;
 		default: reg_file_out = reg_file_in;
 	endcase
 
