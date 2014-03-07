@@ -24,8 +24,8 @@
 	`M(01, add, Ev_Gv)
 	`M(03, add, Gv_Ev)
 	`M(05, add, rax_Iz)
-	`M(09, or,  Gv_Ev)
-	`M(0B, or,  Ev_Gv)
+	`M(09, or,  Ev_Gv)
+	`M(0B, or,  Gv_Ev)
 	`M(0D, or,  rax_Iz)
 
 	`M(11, adc, Ev_Gv)
