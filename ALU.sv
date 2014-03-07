@@ -10,7 +10,21 @@
 		default: val``X = fat_inst.op``X``.immediate; \
 	endcase
 
-`define dobinop(opcode, oper) "opcode": reg_file_out[`get_reg_in_file(fat_inst.opa.reg_id)] = vala oper valb;
+`define dobinop(opcode, oper)	"opcode": `get_64(reg_file_out, fat_inst.opa.reg_id) = vala oper valb;
+`define domovop(opcode)		"opcode": `get_64(reg_file_out, fat_inst.opa.reg_id) = valb;
+
+function automatic void doimul(
+	input logic[63:0] vala,
+	input logic[63:0] valb,
+	output logic[0:63] reg_rax,
+	output logic[0:63] reg_rdx);
+
+	logic[127:0] res = {64'b0, vala} * {64'b0, valb};
+
+	reg_rdx = res[127:64];
+	reg_rax = res[63:0];
+
+endfunction
 
 function automatic logic ALU(
 	`LINTOFF_UNUSED(fat_instruction_t fat_inst),
@@ -24,15 +38,14 @@ function automatic logic ALU(
 
 	reg_file_out = reg_file_in;
 	case (fat_inst.opcode_struct.name)
-		`dobinop(imul, *)
 		`dobinop(add, +)
 		`dobinop(or, |)
 		`dobinop(and, &)
-		"mov": `get_64(reg_file_out, fat_inst.opa.reg_id) = valb;
-		"movabs": `get_64(reg_file_out, fat_inst.opa.reg_id) = valb;
+		`domovop(mov)
+		`domovop(movabs)
+		"imul": doimul(vala, valb, `get_64(reg_file_out, 0), `get_64(reg_file_out, 2));
 	endcase
 
-	//$display("%s", fat_inst.opcode_struct.name);
 	return fat_inst.opcode_struct.name == "retq";
 
 endfunction
