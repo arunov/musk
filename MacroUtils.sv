@@ -1,6 +1,9 @@
 `ifndef _MACRO_UTILS_
 `define _MACRO_UTILS_
 
+/* Print out decoded instruction */
+//`define INS_OUT
+
 `define LINTOFF(x) /* verilator lint_off x */
 `define LINTON(x)  /* verilator lint_on x */
 
@@ -31,5 +34,16 @@
 	end
 
 `define get_reg_in_file(x) x*64+:64
+
+`ifdef INS_OUT
+`define WRITE(x) $write(x);
+`define WRITE2(x1, x2) $write(x1, x2)
+`define WRITE3(x1, x2, x3) $write(x1, x2, x3)
+`else
+`define WRITE(x) ;
+`define WRITE2(x1, x2) ;
+`define WRITE3(x1, x2, x3) ;
+`endif
+
 
 `endif /*_MACRO_UTILS_ */

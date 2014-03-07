@@ -75,7 +75,7 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
     `reset_opbuff();                                            \
 	if (cnt > 10) begin return 11; end                          \
 	index += cnt;                                               \
-	$write(", ");                                               \
+	`WRITE(", ");                                               \
     cnt += `CALL_DFUN(handle``y);                               \
     /* Second operand values are stored in fat_ins structure */ \
     ins.opb = opbuff;                                           \
@@ -86,10 +86,10 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
 `DFUN(handle``reg_def``$``reg_alt)                          \
 	if(ins.rex_prefix == 0 || ins.rex_prefix[0] == 0) begin \
         `update_opbuff_reg(opbuff, get_reg_id("%reg_def"));                   \
-		$write(reg_def_print);                              \
+		`WRITE(reg_def_print);                              \
 	end else if(ins.rex_prefix[0] == 1) begin               \
         `update_opbuff_reg(opbuff, get_reg_id("%reg_alt"));                   \
-		$write(reg_alt_print);                              \
+		`WRITE(reg_alt_print);                              \
 	end                                                     \
 	return 0;                                               \
 `ENDDFUN                                                    \
@@ -100,13 +100,13 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
 `define DFUNR(regR, regR_print)                             \
 `DFUN(handle``regR)                                         \
     `update_opbuff_reg(opbuff, get_reg_id("%regR"))                          \
-	$write(regR_print);                                     \
+	`WRITE(regR_print);                                     \
 `ENDDFUN
 
 /* operand handling utilities */
 `define resolve_index(sindex, content)                                      \
 	if(sindex != 3'b100) begin                                              \
-		$write(content, general_register_names({ins.rex_prefix[1],sindex})); \
+		`WRITE2(content, general_register_names({ins.rex_prefix[1],sindex})); \
 	end
 
 `define resolve_base(base, count)                           \
@@ -114,7 +114,7 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
 		print_abs(index+1, opd_bytes, 32);                  \
 		count += 4;                                         \
 	end                                                     \
-	else $write("(%s)", general_register_names({ins.rex_prefix[1],base}));
+	else `WRITE2("(%s)", general_register_names({ins.rex_prefix[1],base}));
 
 `DFUN(resolve_sib)
 	/*TODO: TEST properly*/
@@ -142,7 +142,7 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
 `DFUN(resolve_disp_32)
 	//SIP relative addressing
 	print_abs(1, opd_bytes, 32);
-	$write("(%%rip)");
+	`WRITE("(%%rip)");
 	return 4; //todo: the interface is wrong
 `ENDDFUN
 */
@@ -191,7 +191,7 @@ function automatic logic signed[63:0] print_abs(logic[3:0] index, logic[0:10*8-1
 			b_disp = rdisp_64;
 			end	
 	endcase
-	$write("%s0x%0x",`SIGN(b_disp), `UHEX(b_disp));
+	`WRITE3("%s0x%0x",`SIGN(b_disp), `UHEX(b_disp));
     return b_disp;
 endfunction
 /* verilator lint_off width *///todo:
@@ -224,7 +224,7 @@ endfunction
 						num += 4;
 					end
 				default:begin
-						$write("(%s) ", general_register_names(register));
+						`WRITE2("(%s) ", general_register_names(register));
 					end
 			endcase	
 		2'b01:
@@ -237,7 +237,7 @@ endfunction
 					end
 				default:begin //No SIB
 						print_abs(index, opd_bytes, 8);
-						$write("(%s) ",general_register_names(register));
+						`WRITE2("(%s) ",general_register_names(register));
 						num += 1;//8 bit displacement 
 					end
 			endcase
@@ -249,13 +249,13 @@ endfunction
 						end
 				default:begin //No SIB
 						print_abs(index, opd_bytes, 32);
-						$write("(%s)",general_register_names(register));
+						`WRITE2("(%s)",general_register_names(register));
 						num += 4; //32 bit displacemnt
 						end
 			endcase
 		2'b11: begin
                 `update_opbuff_reg(opbuff, register);
-			    $write("%s",general_register_names(register));
+			    `WRITE2("%s",general_register_names(register));
             end
 	endcase
 	return num;
@@ -265,7 +265,7 @@ endfunction
     logic[3:0] register = {ins.rex_prefix[2], modrm[5:3]};
 	// Assumption: Gv uses only MODRM.reg
     `update_opbuff_reg(opbuff, register);
-	$write("%s", general_register_names(register));
+	`WRITE2("%s", general_register_names(register));
 	return 0;
 `ENDDFUN
 
@@ -329,17 +329,17 @@ endfunction
 `ENDDFUN
 
 `DFUN(handleYb)
-	$write("%%es:(%%rdi)");
+	`WRITE("%%es:(%%rdi)");
 	return 0;
 `ENDDFUN
 
 `DFUN(handleDX)
-	$write("(%%dx)");
+	`WRITE("(%%dx)");
 	return 0;
 `ENDDFUN
 
 `DFUN(handleXz)
-	$write("(%%ds:(%%rsi))");
+	`WRITE("(%%ds:(%%rsi))");
 	return 0;
 `ENDDFUN
 */
@@ -371,12 +371,12 @@ endfunction
 `COMBO_2_DFUNS(rax, Iz)
 
 `DFUN(Jz)
-	$write("%%rip:");
+	`WRITE("%%rip:");
 	return `CALL_DFUN(handleIz);
 `ENDDFUN
 
 `DFUN(Jb)
-	$write("%%rip:");
+	`WRITE("%%rip:");
 	return `CALL_DFUN(handleIb);
 `ENDDFUN
 
@@ -416,7 +416,7 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
     opbuff.immediate = 0;
     opbuff.bitmap = 0;
 
-	$write("%s  \t", ins.opcode_struct.name);
+	`WRITE2("%s  \t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
 		/* R$R cases */
