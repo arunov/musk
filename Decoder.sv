@@ -54,7 +54,9 @@ endfunction
 
 function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t ins);
 
+	`ifdef INS_OUT
 	logic[0:15*8-1] dc_bytes_copy = dc_bytes;
+	`endif
 	logic[3:0] byte_index = 0;
 	logic[3:0] opcode_byte_cnt = 0;
 	logic[3:0] operand_byte_cnt = 0;
@@ -86,10 +88,12 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instru
 
 	// Check if opcode is invalid
 	if (ins.opcode_struct.name == 0) begin
+		`ifdef INS_OUT
 		$write("invalid opcode: ");
 		`short_print_bytes(ins.opcode_struct.opcode, 3);
 		$write(": ");
 		`SKIP_AND_EXIT;
+		`endif
 	end
 
 	`ADVANCE_DC_POINTER(opcode_byte_cnt)
@@ -99,10 +103,13 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instru
 	
 	operand_byte_cnt = decode_operands(ins, `eget_bytes(dc_bytes, 0, 10));
 
-	$write("\t\t; ");
+	`WRITE("\t\t; ");
+
 	if (operand_byte_cnt > 10) begin
+		`ifdef INS_OUT
 		$write("invalid operands: %h: ", `eget_bytes(dc_bytes, 0, 10));
 		`SKIP_AND_EXIT
+		`endif
 	end
 
 	/* Prevent missing count of ModRM */
@@ -112,9 +119,11 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instru
 
 	`ADVANCE_DC_POINTER(operand_byte_cnt)
 
+	`ifdef INS_OUT
 	$write("%d bytes decoded: ", byte_index);
 	`short_print_bytes(dc_bytes_copy, byte_index);
 	$display("");
+	`endif
 
 	return byte_index;
 
