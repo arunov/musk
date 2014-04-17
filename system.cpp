@@ -66,7 +66,7 @@ void System::dram_read_complete(unsigned id, uint64_t address, uint64_t clock_cy
 	assert(tag != addr_to_tag.end());
 	for(int i=0; i<64; i+=8) {
 		//cerr << "fill data from " << std::hex << (address+(i&63)) <<  ": " << tx_queue.rbegin()->first << " on tag " << tag->second << endl;
-		tx_queue.push_back(make_pair(cse502_be64toh(*((uint64_t*)(&ram[address+(i&63)]))),tag->second));
+		tx_queue.push_back(make_pair(cse502_be64toh(*((uint64_t*)(&ram[address&~63+(address+i)&63]))),tag->second));	// critical word first
 	}
 	addr_to_tag.erase(tag);
 }
@@ -156,7 +156,7 @@ void System::tick(int clk) {
 		if (rx_count) {
 			switch(cmd) {
 			case MEMORY:
-				*((uint64_t*)(&ram[xfer_addr + (8-rx_count)*8])) = top->req;
+				*((uint64_t*)(&ram[xfer_addr&~63+(xfer_addr + (8-rx_count)*8)&63])) = cse502_be64toh(top->req);	// critical word first
 				break;
 			case MMIO:
 				assert(xfer_addr < ramsize);
@@ -179,7 +179,7 @@ void System::tick(int clk) {
 		}
 		bool isWrite = ((top->reqtag >> 12) & 1) == WRITE;
 		if (cmd == MEMORY && isWrite) rx_count = 8;
-		if (cmd == MMIO && isWrite) rx_count = 1;
+		else if (cmd == MMIO && isWrite) rx_count = 1;
 		else rx_count = 0;
 		switch(cmd) {
 		case MEMORY:
