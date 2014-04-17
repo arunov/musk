@@ -26,6 +26,8 @@ module MuskbusReader (
 		if (new_state_cb == idle) offset_ff <= 0;
 
 		if (new_state_cb == recving && bus_resp.respcyc) begin
+			buf_ff[offset_ff +: 64] <= bus_resp.resp;
+			offset_ff <= offset_ff + 64;
 		end
 	end
 
