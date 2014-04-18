@@ -1,4 +1,4 @@
-module LineCache (
+module LineICache (
 	input reset,
 	input clk,
 	output MUSKBUS::req_t bus_req,
@@ -6,9 +6,7 @@ module LineCache (
 	input MUSKBUS::resp_t bus_resp,
 	input logic bus_reqack,
 	input logic reqcyc,
-	input CACHE::cmd_t cmd,
 	input logic [63:0] req_addr,
-	input logic [63:0] req_data,
 	output logic respcyc,
 	output logic [63:0] resp_data
 );
