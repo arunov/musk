@@ -46,17 +46,13 @@ module MuskbusMux #(N = 2) (
 			end
 		endcase 
 
-		top_req = 0;
-		top_respack = 0;
+		top_req = bottom_reqs[new_user_cb];
+		top_respack = bottom_respacks[new_user_cb];
+
 		bottom_resps = 0;
 		bottom_reqacks = 0;
-
-		if (new_state_cb == busy) begin
-			top_req = bottom_reqs[new_user_cb];
-			top_respack = bottom_respacks[new_user_cb];
-			bottom_resps[new_user_cb] = top_result;
-			bottom_reqacks[new_user_cb] = top_reqack;
-		end
+		bottom_resps[new_user_cb] = top_result;
+		bottom_reqacks[new_user_cb] = top_reqack;
 	end
 
 endmodule

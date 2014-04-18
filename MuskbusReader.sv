@@ -46,7 +46,7 @@ module MuskbusReader (
 		unique case(state_ff)
 			idle : if (reqcyc) new_state_cb = reading;
 			reading : if (offset_ff == 64 * 8) new_state_cb = serving;
-			serving : if (!reqcyc) new_state_cb = idle;
+			serving : new_state_cb = idle;
 		endcase
 
 		bus_req = 0;
