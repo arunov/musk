@@ -8,24 +8,33 @@ module MuskCore (
 	input logic reqack
 );
 
-	enum { fetch_idle, fetch_waiting, fetch_active } fetch_state;
-	logic[63:0] fetch_rip;
-	logic[0:2*64*8-1] decode_buffer; // NOTE: buffer bits are left-to-right in increasing order
-	logic[5:0] fetch_skip;
-	logic[6:0] fetch_offset, decode_offset;
+	enum {fetch_idle, fetch_active} fetch_state_ff, new_fetch_state_cb;
+	logic[63:0] fetch_rip_ff;
+	logic[0:2*64*8-1] decode_buffer_ff;
+	int decode_offset_ff, fetch_offset_ff;
 
-	logic send_fetch_req;
+	always_ff @ (posedge clk) begin
+		if (reset) begin
+			fetch_state_ff <= active;
+		end else
+			fetch_state_ff <= new_fetch_state_cb;
+		end
+
+		if (reset) begin
+			fetch_rip_ff <= entry & ~63;
+			decode_offset_ff <= 64 + entry[5:0]; 
+			fetch_offset_ff <= 0;
+		end
+	end
 	always_comb begin
 		if (fetch_state != fetch_idle) begin
-			send_fetch_req = 0; // hack: in theory, we could try to send another request at this point
+			send_fetch_req = 0;
 		end else if (result.reqack) begin
-			send_fetch_req = 0; // hack: still idle, but already got ack (in theory, we could try to send another request as early as this)
+			send_fetch_req = 0;
 		end else begin
 			send_fetch_req = (fetch_offset - decode_offset < 7'd32);
 		end
 	end
-
-	assign command.respack = result.respcyc; // always able to accept new response
 
 	always @ (posedge clk) begin
 
