@@ -5,6 +5,11 @@ module Core (
 
 	`include "Decoder.sv"
 	`include "ALU.sv" 
+	`include "UopQueueTest.sv"
+
+	always_comb begin
+		test_queue();
+	end
 
 	enum { fetch_idle, fetch_waiting, fetch_active } fetch_state;
 	logic[63:0] fetch_rip;
@@ -19,7 +24,6 @@ module Core (
 
 	fat_instruction_t fat_inst_ff;
 	fat_instruction_t fat_inst_cb;
-
 
 	function logic mtrr_is_mmio(logic[63:0] physaddr);
 		mtrr_is_mmio = ((physaddr > 640*1024 && physaddr < 1024*1024));
