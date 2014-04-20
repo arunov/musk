@@ -1,30 +1,27 @@
 module Core (
-	input[63:0] entry
-,	/* verilator lint_off UNDRIVEN */ /* verilator lint_off UNUSED */ Sysbus bus /* verilator lint_on UNUSED */ /* verilator lint_on UNDRIVEN */
+	input[63:0] entry,
+	/* verilator lint_off UNUSED */ Sysbus bus /* verilator lint_on UNUSED */
 );
 
 	logic reset, clk;
-	MUSKBUS::req_t req;
-	MUSKBUS::resp_t resp;
-	logic reqack, respack;
-	/* verilator lint_off UNUSED */ logic dummy_bid; /* verilator lint_on UNUSED */
+	/* verilator lint_off UNDRIVEN */
+	/* verilator lint_off UNUSED */
+	Muskbus muskbus;
+	/* verilator lint_on UNUSED */
+	/* verilator lint_off UNDRIVEN */
 
 	assign reset = bus.reset;
 	assign clk = bus.clk;
 
-	assign dummy_bid = req.bid;
-	assign bus.reqcyc = req.reqcyc;
-	assign bus.reqtag = req.reqtag;
-	assign bus.req = req.req;
+	assign bus.reqcyc = muskbus.reqcyc;
+	assign bus.reqtag = muskbus.reqtag;
+	assign bus.req = muskbus.req;
+	assign bus.respack = muskbus.respack;
 
-	assign bus.respack = respack;
+	assign muskbus.respcyc = bus.respcyc;
+	assign muskbus.resp = bus.resp;
+	assign muskbus.reqack = bus.reqack;
 
-	assign resp.respcyc = bus.respcyc;
-	//assign resp.resptag = bus.resptag;
-	assign resp.resp = bus.resp;
-
-	assign reqack = bus.reqack;
-
-	MuskCore core(entry, reset, clk, req, respack, resp, reqack);
+	MuskCore core(entry, reset, clk, muskbus);
 
 endmodule
