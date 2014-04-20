@@ -7,10 +7,6 @@ module Core (
 	`include "ALU.sv" 
 	`include "UopQueueTest.sv"
 
-	always_comb begin
-		test_queue();
-	end
-
 	enum { fetch_idle, fetch_waiting, fetch_active } fetch_state;
 	logic[63:0] fetch_rip;
 	logic[0:2*64*8-1] decode_buffer; // NOTE: buffer bits are left-to-right in increasing order

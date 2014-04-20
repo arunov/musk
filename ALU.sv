@@ -1,7 +1,8 @@
 
 `include "MacroUtils.sv"
-`include "DecoderTypes.sv"
+//`include "DecoderTypes.sv"
 
+import DECODER::*;
 
 `define readval(X) \
 	case (fat_inst.op``X``.bitmap) \

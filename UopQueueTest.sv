@@ -1,4 +1,4 @@
-`include "UOP.sv"
+import UOP::*;
 
 logic _reset;
 uop_ins_t[IN_UOP-1:0] _in_uop = {"a", "b", "c", "d"};
@@ -8,7 +8,7 @@ logic _get_uop = 0;
 uop_ins_t[OUT_UOP-1:0] _out_uop;
 uop_size_t _out_size;
 
-UopQueue queue(bus.clk, _reset, _in_uop, _in_size, _q_elements, _get_uop, _out_uop, _out_size);
+UopQueue uopqueue(bus.clk, _reset, _in_uop, _in_size, _q_elements, _get_uop, _out_uop, _out_size);
 
 logic[3:0] reset_values = {1'b1, 1'b0, 1'b0, 1'b0};
 uop_size_t[3:0] in_size_values = {0, 1, 2, 0};

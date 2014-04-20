@@ -2,7 +2,9 @@
 `define _OPCODE_MAP_
 
 `include "MacroUtils.sv"
-`include "DecoderTypes.sv"
+//`include "DecoderTypes.sv"
+
+import DECODER::*;
 
 `define M(c, n, m) 'h``c: begin res.name = "n"; res.mode = "m"; end
 `define G(c, g, m) 'h``c: begin res.name = 0; res.mode = "m"; res.group = 'h``g; end

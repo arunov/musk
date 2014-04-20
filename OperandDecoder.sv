@@ -2,7 +2,9 @@
 `define _OPERAND_DECODER_
 
 `include "MacroUtils.sv"
-`include "DecoderTypes.sv"
+//`include "DecoderTypes.sv"
+
+import DECODER::*;
 
 typedef logic[0:4*8-1] reg_name_t;
 

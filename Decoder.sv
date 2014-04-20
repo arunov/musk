@@ -2,9 +2,11 @@
 `define _DECODER_
 
 `include "MacroUtils.sv"
-`include "DecoderTypes.sv"
+//`include "DecoderTypes.sv"
 `include "OpcodeMap.sv"
 `include "OperandDecoder.sv"
+
+import DECODER::*;
 
 function automatic logic is_lock_repeat_prefix(logic[7:0] val);
 	return val == 'hF0 || val == 'hF3 || val == 'hF2;

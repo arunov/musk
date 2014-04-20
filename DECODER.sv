@@ -1,5 +1,4 @@
-`ifndef _DECODER_TYPES_
-`define _DECODER_TYPES_
+package DECODER;
 
 typedef logic[0:16*8-1] opcode_name_t;
 typedef logic[0:32*8-1] opcode_mode_t;
@@ -38,4 +37,5 @@ typedef struct packed {
     decode_buff_t opb;
 } fat_instruction_t;
 
-`endif /* _DECODER_TYPES_ */
+endpackage;
+
