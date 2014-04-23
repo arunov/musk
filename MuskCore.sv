@@ -1,13 +1,12 @@
 module MuskCore (
+	/* verilator lint_off UNUSED */
 	input[63:0] entry,
 	input reset,
 	input clk,
-	output MUSKBUS::req_t req,
-	output logic respack,
-	input MUSKBUS::resp_t resp,
-	input logic reqack
+	Muskbus.Top bus
+	/* verilator lint_on UNUSED */
 );
-
+/*
 	enum {fetch_idle, fetch_active} fetch_state_ff, new_fetch_state_cb;
 	logic[63:0] fetch_rip_ff;
 	logic[0:2*64*8-1] decode_buffer_ff;
@@ -122,4 +121,5 @@ module MuskCore (
 		$display("R14 = %x", 0);
 		$display("R15 = %x", 0);
 	end
+*/
 endmodule
