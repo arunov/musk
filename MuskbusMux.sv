@@ -42,13 +42,21 @@ module MuskbusMux #(N = 2) (
 			end
 		endcase 
 
-		top.req = bottoms[new_user_cb];
-		top.respack = bottoms[new_user_cb];
+		top.bid = bottoms[new_user_cb].bid;
+		top.reqcyc = bottoms[new_user_cb].reqcyc;
+		top.reqtag = bottoms[new_user_cb].reqtag;
+		top.req = bottoms[new_user_cb].req;
+		top.respack = bottoms[new_user_cb].respack;
 
-		bottom_resps = 0;
-		bottom_reqacks = 0;
-		bottom_resps[new_user_cb] = top_result;
-		bottom_reqacks[new_user_cb] = top_reqack;
+		int k;
+		for (k = 0; k < N; k++) begin
+			bottoms[k].respcyc = 0;
+			bottoms[k].resp = 0;
+			bottoms[k].reqack = 0;
+		end
+		bottoms[new_user_cb].respcyc = top.respcyc;
+		bottoms[new_user_cb].resp = top.resp;
+		bottoms[new_user_cb].reqack = top.reqack;
 	end
 
 endmodule

@@ -1,17 +1,16 @@
 module MuskbusWriter (
 	input reset,
 	input clk,
-	output MUSKBUS::req_t bus_req,
-	output logic bus_respack,
-	input MUSKBUS::resp_t bus_resp,
-	input logic bus_reqack,
+	/* verilator lint_off UNUSED */
+	Muskbus.Top bus,
+	/* verilator lint_on UNUSED */
 	input logic reqcyc,
 	input logic [63:0] addr,
 	output logic respcyc,
 	input logic [0:64*8-1] data
 );
 
-	enum { idle, writing, serving } state_ff, new_state_cb;
+	enum { idle, writing } state_ff, new_state_cb;
 	int offset_ff;
 	logic got_first_ack_ff;
 
@@ -27,9 +26,11 @@ module MuskbusWriter (
 			got_first_ack_ff <= 0;
 		end
 
-		if (got_first_ack_ff && bus_reqack) begin
+		if (got_first_ack_ff) begin
 			offset_ff <= offset_ff + 64;
 		end
+
+		if (bus.reqack) got_first_ack_ff <= 1;
 
 		if (new_state_cb == idle) begin
 			offset_ff <= 0;
@@ -41,29 +42,32 @@ module MuskbusWriter (
 		new_state_cb = state_ff;
 		unique case(state_ff)
 			idle : if (reqcyc) new_state_cb = writing;
-			writing : if (offset_ff == 64 * 8) new_state_cb = serving;
-			serving : new_state_cb = idle;
+			writing : if (offset_ff == 64 * 8) new_state_cb = idle;
 		endcase
 
-		bus_req = 0;
-		bus_respack = 0;
+		bus.bid = 0;
+		bus.reqcyc = 0;
+		bus.reqtag = 0;
+		bus.req = 0;
+		bus.respack = 0;
+
 		respcyc = 0;
 
-		if (new_state_cb == writing) bus_req.bid = 1;
+		if (new_state_cb == writing) bus.bid = 1;
 
-		if (new_state_cb == writing && !got_first_ack_ff) begin
-			bus_req.reqcyc = 1;
-			bus_req.reqtag = MUSKBUS::WRITE_MEM_TAG;
-			bus_req.req = addr;
+		if (state_ff == idle && new_state_cb == writing) begin
+			bus.reqcyc = 1;
+			bus.reqtag = MUSKBUS::WRITE_MEM_TAG;
+			bus.req = addr;
 		end
 
 		if (new_state_cb == writing && got_first_ack_ff) begin
-			bus_req.reqcyc = 1;
-			bus_req.reqtag = MUSKBUS::WRITE_MEM_TAG;
-			bus_req.req = data[offset_ff +: 64];
+			bus.reqcyc = 1;
+			bus.reqtag = MUSKBUS::WRITE_MEM_TAG;
+			bus.req = data[offset_ff +: 64];
 		end
 
-		if (new_state_cb == serving) begin
+		if (offset_ff == 64 * 8) begin
 			respcyc = 1;
 		end
 	end
