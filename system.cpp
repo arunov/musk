@@ -66,7 +66,7 @@ void System::dram_read_complete(unsigned id, uint64_t address, uint64_t clock_cy
 	assert(tag != addr_to_tag.end());
 	for(int i=0; i<64; i+=8) {
 		//cerr << "fill data from " << std::hex << (address+(i&63)) <<  ": " << tx_queue.rbegin()->first << " on tag " << tag->second << endl;
-		tx_queue.push_back(make_pair(cse502_be64toh(*((uint64_t*)(&ram[((address&(~63))+((address+i)&63))]))),tag->second));	// critical word first
+		tx_queue.push_back(make_pair(cse502_be64toh(*((uint64_t*)(&ram[((address&(~63))+((address+i)&63))]))),tag->second));
 	}
 	addr_to_tag.erase(tag);
 }
@@ -185,11 +185,22 @@ void System::tick(int clk) {
 		case MEMORY:
  			xfer_addr = top->req;
 			assert(!(xfer_addr & 7));
+			if (addr_to_tag.find(xfer_addr)!=addr_to_tag.end()) {
+				cerr << "Access for " << std::hex << xfer_addr << " already outstanding. Ignoring..." << endl;
+			} else {
+				assert(
+					dramsim->addTransaction(isWrite, xfer_addr)
+				);
+				//cerr << "add transaction " << std::hex << xfer_addr << " on tag " << top->reqtag << endl;
+				if (!isWrite) addr_to_tag[xfer_addr] = top->reqtag;
+			}
+			/*
 			assert(
 				dramsim->addTransaction(isWrite, xfer_addr)
 			);
 			//cerr << "add transaction " << std::hex << xfer_addr << " on tag " << top->reqtag << endl;
 			if (!isWrite) addr_to_tag[xfer_addr] = top->reqtag;
+			*/
 			break;
 		case MMIO:
 			xfer_addr = top->req;
