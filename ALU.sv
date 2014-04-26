@@ -1,7 +1,5 @@
 
 `include "MacroUtils.sv"
-`include "DecoderTypes.sv"
-
 
 `define readval(X) \
 	case (fat_inst.op``X``.bitmap) \
@@ -12,6 +10,10 @@
 
 `define dobinop(opcode, oper)	"opcode": `get_64(reg_file_out, fat_inst.opa.reg_id) = vala oper valb;
 `define domovop(opcode)		"opcode": `get_64(reg_file_out, fat_inst.opa.reg_id) = valb;
+
+package ALU;
+
+import DECODER::fat_instruction_t;
 
 function automatic void doimul(
 	input logic[63:0] vala,
@@ -26,7 +28,7 @@ function automatic void doimul(
 
 endfunction
 
-function automatic logic ALU(
+function automatic logic alu(
 	`LINTOFF_UNUSED(fat_instruction_t fat_inst),
 	logic[0:16*64-1] reg_file_in, 
 	output logic[0:16*64-1] reg_file_out);
@@ -52,3 +54,5 @@ endfunction
 
 `undef readval
 `undef do_arith
+
+endpackage

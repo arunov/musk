@@ -1,10 +1,5 @@
-`ifndef _DECODER_
-`define _DECODER_
 
 `include "MacroUtils.sv"
-`include "DecoderTypes.sv"
-`include "OpcodeMap.sv"
-`include "OperandDecoder.sv"
 
 function automatic logic is_lock_repeat_prefix(logic[7:0] val);
 	return val == 'hF0 || val == 'hF3 || val == 'hF2;
@@ -131,5 +126,3 @@ endfunction
 
 `undef ADVANCE_DC_POINTER
 `undef SKIP_AND_EXIT
-
-`endif /* _DECODER_ */

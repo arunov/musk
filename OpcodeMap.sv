@@ -1,8 +1,5 @@
-`ifndef _OPCODE_MAP_
-`define _OPCODE_MAP_
 
 `include "MacroUtils.sv"
-`include "DecoderTypes.sv"
 
 `define M(c, n, m) 'h``c: begin res.name = "n"; res.mode = "m"; end
 `define G(c, g, m) 'h``c: begin res.name = 0; res.mode = "m"; res.group = 'h``g; end
@@ -251,5 +248,3 @@ function automatic logic[3:0] fill_opcode_struct(logic[0:4*8-1] op_bytes, output
 
 	return idx;
 endfunction
-
-`endif /* _OPCODE_MAP_ */

@@ -1,8 +1,5 @@
-`ifndef _OPERAND_DECODER_ 
-`define _OPERAND_DECODER_
 
 `include "MacroUtils.sv"
-`include "DecoderTypes.sv"
 
 typedef logic[0:4*8-1] reg_name_t;
 
@@ -457,5 +454,3 @@ endfunction
 `undef DRR
 `undef REG
 `undef IMM
-
-`endif /* _OPERAND_DECODER_ */

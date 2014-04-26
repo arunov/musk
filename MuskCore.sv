@@ -1,3 +1,5 @@
+
+
 module MuskCore (
 	input[63:0] entry,
 	input reset,
@@ -9,8 +11,9 @@ module MuskCore (
 	/* verilator lint_on UNDRIVEN */
 );
 
-	`include "Decoder.sv"
-	`include "ALU.sv" 
+	import DECODER::decode;
+	import DECODER::fat_instruction_t;
+	import ALU::alu;
 
 	parameter DECBUF_SIZE=4*64;
 
@@ -83,7 +86,7 @@ module MuskCore (
 
 	always_comb begin
 		if (can_decode) begin
-			bytes_decoded_this_cycle = decode(decode_bytes, fat_inst_cb);
+			bytes_decoded_this_cycle = { 28'b0, decode(decode_bytes, fat_inst_cb) };
 		end else begin
 			bytes_decoded_this_cycle = 0;
 			fat_inst_cb = 0;
@@ -108,7 +111,7 @@ module MuskCore (
 	logic exec_end_cb;
 	always_comb begin
 		if (can_exec_ff) begin
-			exec_end_cb = ALU(fat_inst_ff, reg_file_ff, reg_file_cb);
+			exec_end_cb = alu(fat_inst_ff, reg_file_ff, reg_file_cb);
 		end else begin
 			exec_end_cb = 0;
 			reg_file_cb = 0;
