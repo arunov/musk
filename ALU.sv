@@ -29,7 +29,9 @@ function automatic void doimul(
 endfunction
 
 function automatic logic alu(
-	`LINTOFF_UNUSED(fat_instruction_t fat_inst),
+	/* verilator lint_off UNUSED */
+	fat_instruction_t fat_inst,
+	/* verilator lint_on UNUSED */
 	logic[0:16*64-1] reg_file_in, 
 	output logic[0:16*64-1] reg_file_out);
 

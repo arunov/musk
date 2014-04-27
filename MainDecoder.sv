@@ -1,5 +1,6 @@
 
 `include "MacroUtils.sv"
+`include "PrintMacros.sv"
 
 function automatic logic is_lock_repeat_prefix(logic[7:0] val);
 	return val == 'hF0 || val == 'hF3 || val == 'hF2;
@@ -17,7 +18,7 @@ function automatic logic is_address_size_prefix(logic[7:0] val);
 	return val == 'h67;
 endfunction
 
-function automatic logic is_rex_prefix(`LINTOFF_UNUSED(logic[7:0] val));
+function automatic logic is_rex_prefix(/* verilator lint_off UNUSED */ logic[7:0] val /* verilator lint_on UNUSED */);
 	return val[7:4] == 'h4;
 endfunction
 
@@ -49,9 +50,9 @@ endfunction
 
 function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t ins);
 
-	`ifdef INS_OUT
+	/* verilator lint_off UNUSED */
 	logic[0:15*8-1] dc_bytes_copy = dc_bytes;
-	`endif
+	/* verilator lint_on UNUSED */
 	logic[3:0] byte_index = 0;
 	logic[3:0] opcode_byte_cnt = 0;
 	logic[3:0] operand_byte_cnt = 0;
@@ -83,12 +84,10 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instru
 
 	// Check if opcode is invalid
 	if (ins.opcode_struct.name == 0) begin
-		`ifdef INS_OUT
-		$write("invalid opcode: ");
-		`short_print_bytes(ins.opcode_struct.opcode, 3);
-		$write(": ");
+		`ins_write1("invalid opcode: ");
+		`ins_short_print_bytes(ins.opcode_struct.opcode, 3);
+		`ins_write1(": ");
 		`SKIP_AND_EXIT;
-		`endif
 	end
 
 	`ADVANCE_DC_POINTER(opcode_byte_cnt)
@@ -98,13 +97,11 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instru
 	
 	operand_byte_cnt = decode_operands(ins, `eget_bytes(dc_bytes, 0, 10));
 
-	`WRITE("\t\t; ");
+	`ins_write1("\t\t; ");
 
 	if (operand_byte_cnt > 10) begin
-		`ifdef INS_OUT
-		$write("invalid operands: %h: ", `eget_bytes(dc_bytes, 0, 10));
+		`ins_write2("invalid operands: %h: ", `eget_bytes(dc_bytes, 0, 10));
 		`SKIP_AND_EXIT
-		`endif
 	end
 
 	/* Prevent missing count of ModRM */
@@ -114,11 +111,9 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instru
 
 	`ADVANCE_DC_POINTER(operand_byte_cnt)
 
-	`ifdef INS_OUT
-	$write("%d bytes decoded: ", byte_index);
-	`short_print_bytes(dc_bytes_copy, byte_index);
-	$display("");
-	`endif
+	`ins_write2("%d bytes decoded: ", byte_index);
+	`ins_short_print_bytes(dc_bytes_copy, byte_index);
+	`ins_write1("\n");
 
 	return byte_index;
 

@@ -1,49 +1,27 @@
 `ifndef _MACRO_UTILS_
 `define _MACRO_UTILS_
 
-/* Print out decoded instruction */
-//`define INS_OUT
 
-`define LINTOFF(x) /* verilator lint_off x */
-`define LINTON(x)  /* verilator lint_on x */
+// Address the i'th (inclusive) to (i+p)'th (exclusive) z-bit word in buf.
+`define pget_blocks(buf, i, p, z) buf[(i) * (z) +: (p) * (z)]
+// Address the i'th (inclusive) to j'th (exclusive) z-bit word in buf.
+`define eget_blocks(buf, i, j, z) `pget_blocks(buf, i, j - i, z)
+// Address the i'th z-bit word in buf.
+`define get_block(buf, i, z) `pget_blocks(buf, i, 1, z)
 
-`define LINTOFF_X(x, y) `LINTOFF(x) y `LINTON(x)
-`define LINTOFF_UNUSED(x) `LINTOFF_X(UNUSED, x)
-`define LINTOFF_UNOPTFLAT(x) `LINTOFF_X(UNOPTFLAT, x)
+// Address the i'th (inclusive) to (i+p)'th (exclusive) byte in buf.
+`define pget_bytes(buf, i, p) `pget_blocks(buf, i, p, 8)
+// Address the i'th (inclusive) to j'th (exclusive) byte in buf.
+`define eget_bytes(buf, i, j) `eget_blocks(buf, i, j, 8)
+// Address the i'th byte in buf.
+`define get_byte(buf, i) `get_block(buf, i, 8)
 
-`define pget_blocks(x, i, p, z) x[(i) * (z) +: (p) * (z)]
-`define eget_blocks(x, i, j, z) `pget_blocks(x, i, j - i, z)
-`define get_block(x, i, z) `pget_blocks(x, i, 1, z)
-
-`define pget_bytes(x, i, p) `pget_blocks(x, i, p, 8)
-`define eget_bytes(x, i, j) `eget_blocks(x, i, j, 8)
-`define get_byte(x, i) `get_block(x, i, 8)
-
-`define pget_64s(x, i, p) `pget_blocks(x, i, p, 64)
-`define eget_64s(x, i, j) `eget_blocks(x, i, j, 64)
-`define get_64(x, i) `get_block(x, i, 64)
-
-`define short_print_bytes(buf, size) \
-	for (int i = 0; i < size; i++) begin \
-		if (`get_byte(buf, i) != 0 || i == size - 1) begin \
-			for (int k = i; k < size; k++) begin \
-				$write("%h ", `get_byte(buf, k)); \
-			end \
-			break; \
-		end \
-	end
-
-`define get_reg_in_file(x) x*64+:64
-
-`ifdef INS_OUT
-`define WRITE(x) $write(x);
-`define WRITE2(x1, x2) $write(x1, x2)
-`define WRITE3(x1, x2, x3) $write(x1, x2, x3)
-`else
-`define WRITE(x) ;
-`define WRITE2(x1, x2) ;
-`define WRITE3(x1, x2, x3) ;
-`endif
+// Address the i'th (inclusive) to (i+p)'th (exclusive) 64-bit word in buf.
+`define pget_64s(buf, i, p) `pget_blocks(buf, i, p, 64)
+// Address the i'th (inclusive) to j'th (exclusive) 64-bit word in buf.
+`define eget_64s(buf, i, j) `eget_blocks(buf, i, j, 64)
+// Address the i'th 64-bit word in buf.
+`define get_64(buf, i) `get_block(buf, i, 64)
 
 
-`endif /*_MACRO_UTILS_ */
+`endif /* _MACRO_UTILS_ */

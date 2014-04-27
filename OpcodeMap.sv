@@ -214,7 +214,9 @@ function automatic logic[3:0] fill_opcode_struct(logic[0:4*8-1] op_bytes, output
 
 	logic[3:0] idx = 0;
 	logic[7:0] modrm = 0;
-	`LINTOFF_UNUSED(opcode_struct_t tmp = 0);
+	/* verilator lint_off UNUSED */
+	opcode_struct_t tmp = 0;
+	/* verilator lint_on UNUSED */
 
 	if (`get_byte(op_bytes, 0) == 'h0F) begin
 		if (`get_byte(op_bytes, 1) == 'h3A) begin

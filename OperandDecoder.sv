@@ -1,5 +1,6 @@
 
 `include "MacroUtils.sv"
+`include "PrintMacros.sv"
 
 typedef logic[0:4*8-1] reg_name_t;
 
@@ -44,7 +45,15 @@ typedef logic[15:0] DFUN_RET_TYPE;
 
 /* A DFUN returns the number of bytes consumed, EXCLUDING ModRM. Or some value greater than 10 for error */
 `define DFUN(x) \
-function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, logic[7:0] modrm, logic[3:0] index, logic[0:10*8-1] opd_bytes,inout decode_buff_t opbuff `LINTON(UNUSED));
+function automatic DFUN_RET_TYPE x( \
+	/* verilator lint_off UNUSED */ \
+	inout fat_instruction_t ins, \
+	logic[7:0] modrm, \
+	logic[3:0] index, \
+	logic[0:10*8-1] opd_bytes, \
+	inout decode_buff_t opbuff \
+	/* verilator lint_on UNUSED */ \
+);
 
 `define ENDDFUN endfunction
 
@@ -72,7 +81,7 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
     `reset_opbuff();                                            \
 	if (cnt > 10) begin return 11; end                          \
 	index += cnt;                                               \
-	`WRITE(", ");                                               \
+	`ins_write1(", ");                                               \
     cnt += `CALL_DFUN(handle``y);                               \
     /* Second operand values are stored in fat_ins structure */ \
     ins.opb = opbuff;                                           \
@@ -83,10 +92,10 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
 `DFUN(handle``reg_def``$``reg_alt)                          \
 	if(ins.rex_prefix == 0 || ins.rex_prefix[0] == 0) begin \
         `update_opbuff_reg(opbuff, get_reg_id("%reg_def"));                   \
-		`WRITE(reg_def_print);                              \
+		`ins_write1(reg_def_print);                              \
 	end else if(ins.rex_prefix[0] == 1) begin               \
         `update_opbuff_reg(opbuff, get_reg_id("%reg_alt"));                   \
-		`WRITE(reg_alt_print);                              \
+		`ins_write1(reg_alt_print);                              \
 	end                                                     \
 	return 0;                                               \
 `ENDDFUN                                                    \
@@ -97,13 +106,13 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
 `define DFUNR(regR, regR_print)                             \
 `DFUN(handle``regR)                                         \
     `update_opbuff_reg(opbuff, get_reg_id("%regR"))                          \
-	`WRITE(regR_print);                                     \
+	`ins_write1(regR_print);                                     \
 `ENDDFUN
 
 /* operand handling utilities */
 `define resolve_index(sindex, content)                                      \
 	if(sindex != 3'b100) begin                                              \
-		`WRITE2(content, general_register_names({ins.rex_prefix[1],sindex})); \
+		`ins_write2(content, general_register_names({ins.rex_prefix[1],sindex})); \
 	end
 
 `define resolve_base(base, count)                           \
@@ -111,7 +120,7 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
 		print_abs(index+1, opd_bytes, 32);                  \
 		count += 4;                                         \
 	end                                                     \
-	else `WRITE2("(%s)", general_register_names({ins.rex_prefix[1],base}));
+	else `ins_write2("(%s)", general_register_names({ins.rex_prefix[1],base}));
 
 `DFUN(resolve_sib)
 	/*TODO: TEST properly*/
@@ -139,7 +148,7 @@ function automatic DFUN_RET_TYPE x(`LINTOFF(UNUSED)inout fat_instruction_t ins, 
 `DFUN(resolve_disp_32)
 	//SIP relative addressing
 	print_abs(1, opd_bytes, 32);
-	`WRITE("(%%rip)");
+	`ins_write1("(%%rip)");
 	return 4; //todo: the interface is wrong
 `ENDDFUN
 */
@@ -188,7 +197,7 @@ function automatic logic signed[63:0] print_abs(logic[3:0] index, logic[0:10*8-1
 			b_disp = rdisp_64;
 			end	
 	endcase
-	`WRITE3("%s0x%0x",`SIGN(b_disp), `UHEX(b_disp));
+	`ins_write3("%s0x%0x", `SIGN(b_disp), `UHEX(b_disp));
     return b_disp;
 endfunction
 /* verilator lint_off width *///todo:
@@ -221,7 +230,7 @@ endfunction
 						num += 4;
 					end
 				default:begin
-						`WRITE2("(%s) ", general_register_names(register));
+						`ins_write2("(%s) ", general_register_names(register));
 					end
 			endcase	
 		2'b01:
@@ -234,7 +243,7 @@ endfunction
 					end
 				default:begin //No SIB
 						print_abs(index, opd_bytes, 8);
-						`WRITE2("(%s) ",general_register_names(register));
+						`ins_write2("(%s) ",general_register_names(register));
 						num += 1;//8 bit displacement 
 					end
 			endcase
@@ -246,13 +255,13 @@ endfunction
 						end
 				default:begin //No SIB
 						print_abs(index, opd_bytes, 32);
-						`WRITE2("(%s)",general_register_names(register));
+						`ins_write2("(%s)",general_register_names(register));
 						num += 4; //32 bit displacemnt
 						end
 			endcase
 		2'b11: begin
                 `update_opbuff_reg(opbuff, register);
-			    `WRITE2("%s",general_register_names(register));
+			    `ins_write2("%s",general_register_names(register));
             end
 	endcase
 	return num;
@@ -262,7 +271,7 @@ endfunction
     logic[3:0] register = {ins.rex_prefix[2], modrm[5:3]};
 	// Assumption: Gv uses only MODRM.reg
     `update_opbuff_reg(opbuff, register);
-	`WRITE2("%s", general_register_names(register));
+	`ins_write2("%s", general_register_names(register));
 	return 0;
 `ENDDFUN
 
@@ -314,7 +323,7 @@ endfunction
 	return `CALL_DFUN(handleEv);
 `ENDDFUN
 
-`LINTOFF(UNDRIVEN) `DFUNR(rax, "%%rax") `LINTON(UNDRIVEN)
+/* verilator lint_off UNDRIVEN */ `DFUNR(rax, "%%rax") /* verilator lint_on UNDRIVEN */
 
 /*
 `DFUN(handleEp)
@@ -326,17 +335,17 @@ endfunction
 `ENDDFUN
 
 `DFUN(handleYb)
-	`WRITE("%%es:(%%rdi)");
+	`ins_write1("%%es:(%%rdi)");
 	return 0;
 `ENDDFUN
 
 `DFUN(handleDX)
-	`WRITE("(%%dx)");
+	`ins_write1("(%%dx)");
 	return 0;
 `ENDDFUN
 
 `DFUN(handleXz)
-	`WRITE("(%%ds:(%%rsi))");
+	`ins_write1("(%%ds:(%%rsi))");
 	return 0;
 `ENDDFUN
 */
@@ -368,12 +377,12 @@ endfunction
 `COMBO_2_DFUNS(rax, Iz)
 
 `DFUN(Jz)
-	`WRITE("%%rip:");
+	`ins_write1("%%rip:");
 	return `CALL_DFUN(handleIz);
 `ENDDFUN
 
 `DFUN(Jb)
-	`WRITE("%%rip:");
+	`ins_write1("%%rip:");
 	return `CALL_DFUN(handleIb);
 `ENDDFUN
 
@@ -403,8 +412,13 @@ end
 	`FULLD(r``_Iv, {"r","_Iv"}, 0)
 
 /* If there is error, some value greater than 10 is returned. Otherwise, the number of bytes consumed is returned. */
-function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruction_t ins), input logic[0:10*8-1] opd_bytes);
-	
+function automatic logic[3:0] decode_operands(
+	/* verilator lint_off UNUSED */
+	inout fat_instruction_t ins, 
+	/* verilator lint_on UNUSED */
+	input logic[0:10*8-1] opd_bytes
+);
+
 	logic[15:0] cnt = 0;
 	logic[7:0] modrm = 0;
 	logic[3:0] index = 0;
@@ -413,7 +427,7 @@ function automatic logic[3:0] decode_operands(inout `LINTOFF_UNUSED(fat_instruct
     opbuff.immediate = 0;
     opbuff.bitmap = 0;
 
-	`WRITE2("%s  \t", ins.opcode_struct.name);
+	`ins_write2("%s  \t", ins.opcode_struct.name);
 
 	case (ins.opcode_struct.mode)
 		/* R$R cases */

@@ -1,6 +1,6 @@
 
 typedef logic[0:16*8-1] opcode_name_t;
-typedef logic[0:32*8-1] opcode_mode_t;
+typedef logic[0:16*8-1] opcode_mode_t;
 
 typedef struct packed {
 	logic[0:3*8-1] opcode;
