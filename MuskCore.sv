@@ -11,8 +11,8 @@ module MuskCore (
 	/* verilator lint_on UNDRIVEN */
 );
 
-	import DECODER::decode;
-	import DECODER::fat_instruction_t;
+	import DecoderTypes::fat_instruction_t;
+	import Decoder::decode;
 	import ALU::alu;
 
 	parameter DECBUF_SIZE=4*64;

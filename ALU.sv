@@ -3,8 +3,8 @@
 
 `define readval(X) \
 	case (fat_inst.op``X``.bitmap) \
-		`REG_BITMAP: val``X = `get_64(reg_file_in, fat_inst.op``X``.reg_id); \
-		`IMM_BITMAP: val``X = fat_inst.op``X``.immediate; \
+		REG_BITMAP: val``X = `get_64(reg_file_in, fat_inst.op``X``.reg_id); \
+		IMM_BITMAP: val``X = fat_inst.op``X``.immediate; \
 		default: val``X = fat_inst.op``X``.immediate; \
 	endcase
 
@@ -13,7 +13,7 @@
 
 package ALU;
 
-import DECODER::fat_instruction_t;
+import DecoderTypes::*;
 
 function automatic void doimul(
 	input logic[63:0] vala,
@@ -53,8 +53,5 @@ function automatic logic alu(
 	return fat_inst.opcode_struct.name == "retq";
 
 endfunction
-
-`undef readval
-`undef do_arith
 
 endpackage

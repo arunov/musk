@@ -14,6 +14,10 @@
 		return res; \
 	endfunction
 
+package OpcodeMap;
+
+import DecoderTypes::*;
+
 /* Use _ to represent an empty mode */
 
 `MAP_BEGIN(opcode_map1)
@@ -150,11 +154,6 @@
 `MAP_BEGIN(opcode_map4)
 `MAP_END
 
-`undef M
-`undef G
-`undef MAP_BEGIN
-`undef MAP_END
-
 `define GMC(g, t, n, m, c) {24'h``c, 5'h``g, 8'b``t}: begin res.name = "n"; res.mode = "m"; end
 `define GM(g, t, n, m) `GMC(g, t, n, m, ?)
 
@@ -205,9 +204,6 @@ function automatic opcode_struct_t opcode_group_map(logic [0:3*8-1] opcode, logi
 	return res;
 endfunction
 
-`undef GMC
-`undef GM
-
 /* op_struct.name will be zero when something goes wrong */
 /* returns the number of bytes in opcode, excluding ModRM, even if it's used */
 function automatic logic[3:0] fill_opcode_struct(logic[0:4*8-1] op_bytes, output opcode_struct_t op_struct);
@@ -250,3 +246,5 @@ function automatic logic[3:0] fill_opcode_struct(logic[0:4*8-1] op_bytes, output
 
 	return idx;
 endfunction
+
+endpackage;

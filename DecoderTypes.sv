@@ -1,4 +1,12 @@
 
+package DecoderTypes;
+
+parameter 
+	REG=0,
+	IMM=1,
+	REG_BITMAP=2'b01,
+	IMM_BITMAP=2'b10;
+
 typedef logic[0:16*8-1] opcode_name_t;
 typedef logic[0:16*8-1] opcode_mode_t;
 
@@ -17,12 +25,6 @@ typedef struct packed{
     logic[1:0] bitmap;
 } decode_buff_t;
 
-`define REG 0
-`define IMM 1
-
-`define REG_BITMAP 2'b01
-`define IMM_BITMAP 2'b10
-
 typedef struct packed {
 	logic[7:0] lock_repeat_prefix;
 	logic[7:0] segment_branch_prefix;
@@ -35,3 +37,5 @@ typedef struct packed {
     decode_buff_t opa;
     decode_buff_t opb;
 } fat_instruction_t;
+
+endpackage

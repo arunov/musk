@@ -1,6 +1,11 @@
-
 `include "MacroUtils.sv"
 `include "PrintMacros.sv"
+
+package Decoder;
+
+import DecoderTypes::*;
+import OpcodeMap::fill_opcode_struct;
+import OperandDecoder::decode_operands;
 
 function automatic logic is_lock_repeat_prefix(logic[7:0] val);
 	return val == 'hF0 || val == 'hF3 || val == 'hF2;
@@ -119,5 +124,4 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instru
 
 endfunction
 
-`undef ADVANCE_DC_POINTER
-`undef SKIP_AND_EXIT
+endpackage

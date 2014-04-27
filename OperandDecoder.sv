@@ -2,6 +2,10 @@
 `include "MacroUtils.sv"
 `include "PrintMacros.sv"
 
+package OperandDecoder;
+
+import DecoderTypes::*;
+
 typedef logic[0:4*8-1] reg_name_t;
 
 function automatic reg_name_t[0:15] get_register_name_map();
@@ -141,9 +145,6 @@ function automatic DFUN_RET_TYPE x( \
 	return count + 1; 
 `ENDDFUN
 
-`undef resolve_index
-`undef resolve_base
-
 /*
 `DFUN(resolve_disp_32)
 	//SIP relative addressing
@@ -201,16 +202,14 @@ function automatic logic signed[63:0] print_abs(logic[3:0] index, logic[0:10*8-1
     return b_disp;
 endfunction
 /* verilator lint_off width *///todo:
-`define REG 0
-`define IMM 1
 
 `define update_opbuff_reg(opbuff, register)\
     opbuff.reg_id = register;\
-    opbuff.bitmap[`REG] = 1;\
+    opbuff.bitmap[REG] = 1;\
 
 `define update_opbuff_imm(opbuff, immediate)\
     opbuff.immediate = immediate;\
-    opbuff.bitmap[`IMM] = 1;\
+    opbuff.bitmap[IMM] = 1;\
 
 
 `DFUN(handleEv)
@@ -390,14 +389,6 @@ endfunction
 	return 0;
 `ENDDFUN
 
-`undef DFUN
-`undef ENDDFUN
-`undef CALL_DFUN
-`undef COMBO_1_DFUNS
-`undef COMBO_2_DFUNS
-`undef DFUNR1$R2
-`undef DFUNR
-
 `define FULLD(x, x_str, mm) x_str: \
 begin \
 	ins.operands_use_modrm=(mm); \
@@ -463,8 +454,4 @@ function automatic logic[3:0] decode_operands(
 
 endfunction
 
-`undef FULLD
-`undef D
-`undef DRR
-`undef REG
-`undef IMM
+endpackage
