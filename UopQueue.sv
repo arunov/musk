@@ -5,7 +5,7 @@ module UopQueue (
 	input logic clk,
 	input UOP::uop_ins_t[0:(UOP::IN_UOP-1)] in_uop,
 	input UOP::uop_size_t in_size,
-	output UOP::uop_size_t q_elements, // Number of uops in queue
+	output UOP::uop_size_t q_elements_out, // Number of uops in queue
 	input logic get_uop,
 	output UOP::uop_ins_t[0:(UOP::OUT_UOP-1)] out_uop,
 	output UOP::uop_size_t out_size
@@ -13,11 +13,12 @@ module UopQueue (
 
 	UOP::uop_index_t head, tail, head_old, tail_old;
 	UOP::uop_ins_t[0:(UOP::QU_UOP-1)] queue;
-	UOP::uop_size_t q_space, q_out_size;
+	UOP::uop_size_t q_space, q_elements, q_out_size;
 
 	always_ff @ (posedge clk) begin
 		head_old <= head;
 		tail_old <= tail;
+		q_elements_out <= q_elements;
 		if(reset) begin
 			head <= 0;
 			tail <= 0;
