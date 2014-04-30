@@ -154,12 +154,12 @@ import DecoderTypes::*;
 `MAP_BEGIN(opcode_map4)
 `MAP_END
 
-`define GMC(g, t, n, m, c) {24'h``c, 5'h``g, 8'b``t}: begin res.name = "n"; res.mode = "m"; end
-`define GM(g, t, n, m) `GMC(g, t, n, m, ?)
+`define GMC(g, k, c, n, m) {g, 8'b``k, 24'h``c}: begin res.name = "n"; res.mode = "m"; end
+`define GM(g, k, n, m) `GMC(g, k, ?, n, m)
 
-function automatic opcode_struct_t opcode_group_map(logic [0:3*8-1] opcode, logic[4:0] group, logic[7:0] key);
+function automatic opcode_struct_t group_opcode_map(logic[4:0] group, logic[7:0] key, logic [0:3*8-1] opcode);
 	opcode_struct_t res = 0;
-	casez ({opcode, group, key})
+	casez ({group, key, opcode})
 
 	/* within the same group, patterns with more ?'s should appear before patterns with less ?'s */
 
@@ -182,13 +182,13 @@ function automatic opcode_struct_t opcode_group_map(logic [0:3*8-1] opcode, logi
 	`GM(2, ??101???, shr, _)
 	`GM(2, ??111???, sar, _)
 
-	`GMC(3, ??000???, test, Ev_Iz, F7)
+	`GMC(3, ??000???, F7, test, Ev_Iz)
 	`GM(3, ??010???, not, _)
 	`GM(3, ??011???, neg, _)
-	`GMC(3, ??100???, mul, Ev_rax, F7)
-	`GMC(3, ??101???, imul, Ev_rax, F7)
-	`GMC(3, ??110???, div, Ev_rax, F7)
-	`GMC(3, ??111???, idiv, Ev_rax, F7)
+	`GMC(3, ??100???, F7, mul, Ev_rax)
+	`GMC(3, ??101???, F7, imul, Ev_rax)
+	`GMC(3, ??110???, F7, div, Ev_rax)
+	`GMC(3, ??111???, F7, idiv, Ev_rax)
 
 	`GM(5, ??000???, inc, Ev)
 	`GM(5, ??001???, dec, Ev)
@@ -198,7 +198,7 @@ function automatic opcode_struct_t opcode_group_map(logic [0:3*8-1] opcode, logi
 	`GM(5, ??101???, jmp, Mp)
 	`GM(5, ??110???, push, Ev)
 
-	`GMC(11, ??000???, mov, Ev_Iz, C7)
+	`GMC(11, ??000???, C7, mov, Ev_Iz)
 
 	endcase
 	return res;
@@ -206,13 +206,15 @@ endfunction
 
 /* op_struct.name will be zero when something goes wrong */
 /* returns the number of bytes in opcode, excluding ModRM, even if it's used */
-function automatic logic[3:0] fill_opcode_struct(logic[0:4*8-1] op_bytes, output opcode_struct_t op_struct);
+function automatic int fill_opcode_struct(logic[0:4*8-1] op_bytes, output opcode_struct_t op_struct);
 
-	logic[3:0] idx = 0;
+	int idx = 0;
 	logic[7:0] modrm = 0;
 	/* verilator lint_off UNUSED */
 	opcode_struct_t tmp = 0;
 	/* verilator lint_on UNUSED */
+
+	op_struct = 0;
 
 	if (`get_byte(op_bytes, 0) == 'h0F) begin
 		if (`get_byte(op_bytes, 1) == 'h3A) begin
@@ -236,7 +238,7 @@ function automatic logic[3:0] fill_opcode_struct(logic[0:4*8-1] op_bytes, output
 
 	if (op_struct.group != 0) begin
 		modrm = `get_byte(op_bytes, idx);
-		tmp = opcode_group_map(op_struct.opcode, op_struct.group, modrm);
+		tmp = group_opcode_map(op_struct.group, modrm, op_struct.opcode);
 		op_struct.name = tmp.name;
 		/* group-map mode overrides opcode-map mode */
 		if (tmp.mode != "_") begin

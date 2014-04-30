@@ -86,7 +86,7 @@ module MuskCore (
 
 	always_comb begin
 		if (can_decode) begin
-			bytes_decoded_this_cycle = { 28'b0, decode(decode_bytes, fat_inst_cb) };
+			bytes_decoded_this_cycle = decode(decode_bytes, fat_inst_cb);
 		end else begin
 			bytes_decoded_this_cycle = 0;
 			fat_inst_cb = 0;

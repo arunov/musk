@@ -53,21 +53,18 @@ endfunction
 	$display("skip one byte: %h", `get_byte(dc_bytes_copy, 0)); \
 	return 1;
 
-function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t ins);
+function automatic int decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t ins);
 
 	/* verilator lint_off UNUSED */
 	logic[0:15*8-1] dc_bytes_copy = dc_bytes;
 	/* verilator lint_on UNUSED */
-	logic[3:0] byte_index = 0;
-	logic[3:0] opcode_byte_cnt = 0;
-	logic[3:0] operand_byte_cnt = 0;
-	logic[7:0] cur_byte = 0;
+
+	int opcode_byte_cnt = 0;
+	int operand_byte_cnt = 0;
+	int byte_index = 0;
+	logic[7:0] cur_byte = `get_byte(dc_bytes, 0); 
 
 	ins = 0;
-
-	//$write("bytes: %h: ", dc_bytes);
-
-	cur_byte = `get_byte(dc_bytes, byte_index);
  
 	// Handle legacy prefixes, 4 of them at most.
 	repeat (4) begin
@@ -84,7 +81,7 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instru
 		`ADVANCE_DC_POINTER(1)
 	end
 
-	/* 4 bytes are passed because ModRM may be needed */
+	/* 4 bytes are passed because ModRM may be needed, but ModRM is not counted in opcode_byte_cnt */
 	opcode_byte_cnt = fill_opcode_struct(`pget_bytes(dc_bytes, byte_index, 4), ins.opcode_struct);
 
 	// Check if opcode is invalid
@@ -97,21 +94,16 @@ function automatic logic[3:0] decode(logic[0:15*8-1] dc_bytes, output fat_instru
 
 	`ADVANCE_DC_POINTER(opcode_byte_cnt)
 
-	// This is to make sure when we take 10 bytes, we don't go out of bound.
+	// Make sure even with long prefix and opcode, we don't go out of bound when taking 10 operand bytes.
 	dc_bytes <<= byte_index * 8;
-	
+	// Maximum 10 bytes of operands.
 	operand_byte_cnt = decode_operands(ins, `eget_bytes(dc_bytes, 0, 10));
 
 	`ins_write1("\t\t; ");
 
-	if (operand_byte_cnt > 10) begin
+	if (operand_byte_cnt < 0) begin
 		`ins_write2("invalid operands: %h: ", `eget_bytes(dc_bytes, 0, 10));
 		`SKIP_AND_EXIT
-	end
-
-	/* Prevent missing count of ModRM */
-	if (!ins.operands_use_modrm && ins.opcode_struct.group != 0) begin
-		`ADVANCE_DC_POINTER(1)
 	end
 
 	`ADVANCE_DC_POINTER(operand_byte_cnt)
