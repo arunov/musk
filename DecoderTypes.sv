@@ -26,20 +26,23 @@ typedef enum {
 } operand_type_t;
 
 typedef struct packed {
+	operand_type_t opd_type;
+	reg_id_t base_reg;
+	reg_id_t index_reg;
+	logic[63:0] scale;
+	logic[63:0] disp;
+	logic[63:0] immediate; 
+} operand_t;
+
+typedef struct packed {
 	logic[7:0] lock_repeat_prefix;
 	logic[7:0] segment_branch_prefix;
 	logic[7:0] operand_size_prefix;
 	logic[7:0] address_size_prefix;
 	logic[7:0] rex_prefix;
 	opcode_struct_t opcode_struct;
-	operand_type_t operand0_type;
-	operand_type_t operand1_type;
-	reg_id_t reg0;
-	reg_id_t reg1;
-	reg_id_t index_reg;
-	logic[63:0] scale;
-	logic[63:0] disp;
-	logic[63:0] immediate; 
+	operand_t operand0;
+	operand_t operand1;
 } fat_instruction_t;
 
 endpackage
