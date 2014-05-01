@@ -39,6 +39,7 @@ function automatic int crackSIB(
 	/* verilator lint_on UNUSED */ \
 );
 
+	operand.opd_type = opdt_base_
 endfunction
 
 /*** end of simple functions ***/

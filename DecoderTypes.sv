@@ -15,20 +15,17 @@ typedef enum {
 	opdt_nil = 0,
 	opdt_register,
 	opdt_immediate,
-	opdt_base,
-	opdt_index,
-	opdt_disp,
-	opdt_base_index,
-	opdt_base_disp,
-	opdt_index_disp,
-	opdt_base_index_disp,
-	opdt_rip_disp
+	opdt_memory
 } operand_type_t;
 
 typedef struct packed {
 	operand_type_t opd_type;
 	reg_id_t base_reg;
 	reg_id_t index_reg;
+	logic mem_has_base;
+	logic mem_has_index;
+	logic mem_has_disp;
+	logic mem_rip_relative;
 	logic[63:0] scale;
 	logic[63:0] disp;
 	logic[63:0] immediate; 
