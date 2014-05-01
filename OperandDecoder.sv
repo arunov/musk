@@ -39,6 +39,8 @@ function automatic int crackSIB(
 	/* verilator lint_on UNUSED */ \
 );
 
+	operand.opd_type = opdt_memory;
+
 endfunction
 
 /*** end of simple functions ***/
@@ -103,8 +105,9 @@ function automatic int fun( \
 		return crackSIB(operand, ins, modrm, opd_bytes);
 	end
 
-	if (modrm[7:6] == 2'b00 && modrm[2:0] = 3'b101) begin
-		operand.opd_type = rip_relative;
+	if (modrm[7:6] == 2'b00 && modrm[2:0] = 3'b101) begin // rip relative
+		operand.opd_type = opdt_memory;
+		operand.mem_rip_relative = 1;
 		operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, 0, 4));
 		return 4;
 	end
@@ -112,16 +115,21 @@ function automatic int fun( \
 	operand.base_reg = {ins.rex_prefix[REX_B], modrm[2:0]};
 	unique case (modrm[7:6]) begin
 		2'b00: begin
-			operand.opd_type = opdt_base;
+			operand.opd_type = opdt_memory;
+			operand.mem_has_base = 1;
 			return 0;
 		end
 		2'b01: begin
-			operand.opd_type = opdt_base_disp;
+			operand.opd_type = opdt_memory;
+			operand.mem_has_base = 1;
+			operand.mem_has_disp = 1;
 			operand.disp = Uitls::le_1bytes_to_val(`get_byte(opd_bytes, 0));
 			return 1;
 		end
 		2'b10: begin
-			operand.opd_type = opdt_base_disp;
+			operand.opd_type = opdt_memory;
+			operand.mem_has_base = 1;
+			operand.mem_has_disp = 1;
 			operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, 0, 4));
 			return 4;
 		end
@@ -285,13 +293,15 @@ function automatic int fun( \
 `ENDDFUN
 
 `DFUN(Jz)
-	ins.operand0.opd_type = opdt_rip_disp;
+	ins.operand0.opd_type = opdt_memory;
+	ins.operand0.mem_rip_relative = 1;
 	ins.operand0.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, 0, 4));
 	return 4;
 `ENDDFUN
 
 `DFUN(Jb)
-	ins.operand0.opd_type = opdt_rip_disp;
+	ins.operand0.opd_type = opdt_memory;
+	ins.operand0.mem_rip_relative = 1;
 	ins.operand0.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, 0));
 	return 1;
 `ENDDFUN
