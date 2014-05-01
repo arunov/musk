@@ -35,12 +35,45 @@ function automatic int crackSIB(
 	output operand_t operand, \
 	input fat_instruction_t ins, \
 	input logic[7:0] modrm, \
+	input logic[7:0] sib, \
+	input int index, \
 	input logic[0:10*8-1] opd_bytes \
 	/* verilator lint_on UNUSED */ \
 );
-
 	operand.opd_type = opdt_memory;
 
+	if (!(sib[2:0] == 3'b101 && modrm[7:6] == 2'b00)) begin
+		operand.mem_has_base = 1;
+		operand.base_reg = sib[2:0];
+	end
+
+	if (!(sib[5:3] == 3'b100)) begin
+		operand.mem_has_index = 1;
+		operand.index_reg = sib[5:3];
+	end
+
+	operand.scale = 1 << sib[7:6];
+
+	if (modrm[7:6] == 2'b00 && sib[2:0] == 3'b101) begin
+		operand.mem_has_disp = 1;
+		operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+		return 4;
+	begin
+
+	unique case (modrm[7:6]) begin
+		2'b00 : return 0;
+		2'b01 : begin
+			operand.mem_has_disp = 1;
+			operand.disp = Uitls::le_1bytes_to_val(`get_byte(opd_bytes, index));
+			return 1;
+		end
+		2'b10 : begin
+			operand.mem_has_disp = 1;
+			operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+			return 4;
+		end
+		2'b11 : return 0;
+	endcase
 endfunction
 
 /*** end of simple functions ***/
@@ -61,7 +94,7 @@ function automatic int fun( \
 /*** start of handlers ***/
 `HANDLER(Ib)
 	operand.opd_type = opdt_immediate;
-	operand.immediate = Utils::le_1bytes_to_val(`pget_bytes(opd_bytes, index, 1));
+	operand.immediate = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 	return 1;
 `ENDHANDLER
 
@@ -102,13 +135,14 @@ function automatic int fun( \
 
 `HANDLER(Ev)
 	if (modrm[7:6] != 2'b11 && modrm[2:0] == 3'b100) begin // has SIB byte
-		return crackSIB(operand, ins, modrm, opd_bytes);
+		logic [7:0] sib = `get_byte(opd_bytes, index);
+		return crackSIB(operand, ins, modrm, sib, index+1, opd_bytes);
 	end
 
 	if (modrm[7:6] == 2'b00 && modrm[2:0] = 3'b101) begin // rip relative
 		operand.opd_type = opdt_memory;
 		operand.mem_rip_relative = 1;
-		operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, 0, 4));
+		operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 		return 4;
 	end
 
@@ -123,14 +157,14 @@ function automatic int fun( \
 			operand.opd_type = opdt_memory;
 			operand.mem_has_base = 1;
 			operand.mem_has_disp = 1;
-			operand.disp = Uitls::le_1bytes_to_val(`get_byte(opd_bytes, 0));
+			operand.disp = Uitls::le_1bytes_to_val(`get_byte(opd_bytes, index));
 			return 1;
 		end
 		2'b10: begin
 			operand.opd_type = opdt_memory;
 			operand.mem_has_base = 1;
 			operand.mem_has_disp = 1;
-			operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, 0, 4));
+			operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 			return 4;
 		end
 		2'b11: begin
@@ -166,15 +200,16 @@ function automatic int fun( \
 	/* verilator lint_off UNUSED */ \
 	inout fat_instruction_t ins, \
 	input logic[7:0] modrm, \
+	input int index, \
 	input logic[0:10*8-1] opd_bytes \
 	/* verilator lint_on UNUSED */ \
 );
 `define ENDDFUN endfunction
 
 `define COMPOSE(hd0, hd1) \
-	int cnt0 = handle``hd0(ins.operand0, ins, modrm, 0, opd_bytes); \
+	int cnt0 = handle``hd0(ins.operand0, ins, modrm, index, opd_bytes); \
 	if (cnt0 < 0) return -1; \
-	int cnt1 = handle``hd1(ins.operand1, ins, modrm, cnt0, opd_bytes); \
+	int cnt1 = handle``hd1(ins.operand1, ins, modrm, index + cnt0, opd_bytes); \
 	if (cnt1 < 0) return -1; \
 	return cnt0 + cnt1;
 
@@ -222,46 +257,46 @@ function automatic int fun( \
 
 `DFUN(rax$r8_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rax, r8); 
-	return handleIv(ins.operand1, modrm, 0, opd_bytes);
+	return handleIv(ins.operand1, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rcx$r9_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rcx, r9); 
-	return handleIv(ins.operand1, modrm, 0, opd_bytes);
+	return handleIv(ins.operand1, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rdx$r10_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rdx, r10); 
-	return handleIv(ins.operand1, modrm, 0, opd_bytes);
+	return handleIv(ins.operand1, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rbx$r11_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rbx, r11); 
-	return handleIv(ins.operand1, modrm, 0, opd_bytes);
+	return handleIv(ins.operand1, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rsp$r12_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rsp, r12); 
-	return handleIv(ins.operand1, modrm, 0, opd_bytes);
+	return handleIv(ins.operand1, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rbp$r13_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rbp, r13); 
-	return handleIv(ins.operand1, modrm, 0, opd_bytes);
+	return handleIv(ins.operand1, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rsi$r14_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rsi, r14); 
-	return handleIv(ins.operand1, modrm, 0, opd_bytes);
+	return handleIv(ins.operand1, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rdi$r15_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rdi, r15); 
-	return handleIv(ins.operand1, modrm, 0, opd_bytes);
+	return handleIv(ins.operand1, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(Ev)
-	return handleEv(ins.operand0, ins.rex_prefix, modrm, 0, opd_bytes);
+	return handleEv(ins.operand0, ins.rex_prefix, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(Ev_Gv)
@@ -295,14 +330,14 @@ function automatic int fun( \
 `DFUN(Jz)
 	ins.operand0.opd_type = opdt_memory;
 	ins.operand0.mem_rip_relative = 1;
-	ins.operand0.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, 0, 4));
+	ins.operand0.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 	return 4;
 `ENDDFUN
 
 `DFUN(Jb)
 	ins.operand0.opd_type = opdt_memory;
 	ins.operand0.mem_rip_relative = 1;
-	ins.operand0.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, 0));
+	ins.operand0.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 	return 1;
 `ENDDFUN
 
@@ -329,7 +364,7 @@ function automatic logic has_modrm( /* verilator lint_off UNUSED */ fat_instruct
 
 endfunction
 
-`define D(mode) "mode" : cnt = mode(ins, modrm, opd_bytes);
+`define D(mode) "mode" : cnt = mode(ins, modrm, index, opd_bytes);
 
 /* Return -1 if error. Otherwise, the number of bytes consumed is returned. */
 function automatic int decode_operands(
@@ -340,13 +375,12 @@ function automatic int decode_operands(
 );
 
 	logic[7:0] modrm = 0;
-	int took_modrm = 0;
+	int index = 0;
 	int cnt = 0;
 
 	if (has_modrm(ins)) begin
 		modrm = `get_byte(opd_bytes, 0);
-		opd_bytes <<= 8;
-		took_modrm = 1;
+		index = 1;
 	end
 
 	case (ins.opcode_struct.mode)
@@ -386,7 +420,7 @@ function automatic int decode_operands(
 	if (cnt < 0) begin
 		return -1;
 	end else begin
-		return took_modrm + cnt;
+		return index + cnt;
 	end
 
 endfunction
