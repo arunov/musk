@@ -28,6 +28,7 @@ class System {
 
 	char* ram;
 	unsigned int ramsize;
+	uint64_t max_elf_addr;
 
 	enum { IRQ_TIMER=0, IRQ_KBD=1 };
 	int interrupts;
@@ -51,6 +52,11 @@ public:
 	~System();
 
 	void tick(int clk);
+	uint64_t get_ram_address() { return (uint64_t)ram; }
+	uint64_t get_max_elf_addr() {
+		max_elf_addr = ((max_elf_addr+4095)/4096)*4096;
+		return max_elf_addr;
+	}
 };
 
 #endif

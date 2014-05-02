@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <ncurses/ncurses.h>
 #include "system.h"
+#include "syscall.h"
 #include "Vtop_top.h"
 
 using namespace std;
@@ -47,6 +48,9 @@ uint64_t System::load_elf(const char* filename) {
 			memset(ram+p->p_vaddr,0,p->p_memsz);
 			assert(lseek(fd,p->p_offset,SEEK_SET)!=-1);
 			assert(read(fd,(void*)(ram+p->p_vaddr),p->p_filesz)==p->p_filesz);
+			if (max_elf_addr < ((uint64_t)(ram+p->p_vaddr)+p->p_filesz)) {
+				max_elf_addr = ((uint64_t)(ram+p->p_vaddr)+p->p_filesz);
+			}
 			//cerr << "section flags " << hex << p->p_flags << endl;
 		} else if (p->p_type == PT_GNU_STACK) {
 			// do nothing
@@ -77,7 +81,9 @@ void System::dram_write_complete(unsigned id, uint64_t address, uint64_t clock_c
 System::System(Vtop* top, uint64_t ramsize, const char* ramelf, int ps_per_clock)
 :	top(top)
 ,	ramsize(ramsize)
+,	max_elf_addr(0)
 ,	show_console(false)
+,	rx_count(0)
 {
 	ram = (char*)malloc(ramsize);
 	assert(ram);
@@ -213,5 +219,30 @@ void System::tick(int clk) {
 	} else {
 		top->reqack = 0;
 		rx_count = 0;
+	}
+}
+
+extern char *global_ram;
+extern uint64_t global_ramsize;
+extern uint64_t global_ram_brkptr;
+
+long long syscall_cse502(long long rax, long long rdi, long long rsi, long long rdx, long long r10, long long r8, long long r9)
+{
+	switch (rax) {
+	case __NR_exit:
+		return __syscall1(rax, rdi);
+	case __NR_write:
+		return __syscall3(rax, rdi, (uint64_t)(global_ram+rsi), rdx);
+	case __NR_brk:
+		if (rdi != 0) {
+			global_ram_brkptr = rdi;
+			assert(rdi > 0 && rdi < global_ramsize);
+			return 0;
+		}
+		return global_ram_brkptr;
+	case __NR_clock_gettime:
+		return __syscall2(rax, rdi, (uint64_t)(global_ram+rsi));
+	default:
+		assert(0);	// no other syscall is implemented.
 	}
 }

@@ -5,6 +5,10 @@
 # include <verilated_vcd_c.h>	// Trace file format header
 #endif
 
+char *global_ram;
+uint64_t global_ramsize;
+uint64_t global_ram_brkptr;
+
 int main(int argc, char* argv[]) {
 	Verilated::commandArgs(argc, argv);
 
@@ -13,6 +17,10 @@ int main(int argc, char* argv[]) {
 
 	Vtop top;
 	System sys(&top, 1*G, ramelf, ps_per_clock);
+
+	global_ram = (char *)sys.get_ram_address();
+	global_ramsize = 1*G;
+	global_ram_brkptr = sys.get_max_elf_addr();
 
 	VerilatedVcdC* tfp = NULL;
 #if VM_TRACE			// If verilator was invoked with --trace
