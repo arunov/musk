@@ -3,9 +3,9 @@ package InstructionPrinter;
 import DecoderTypes::*;
 import RegMap::*;
 
-function prtOpd(operand_t opd);
+function void prtOpd(operand_t opd);
 	if(opd.mem_rip_relative) begin
-		$write("%rip(0x%x)", opd.immediate);
+		$write("%%rip(0x%x)", opd.immediate);
 		return;
 	end
 	unique case(opd.opd_type)
@@ -13,7 +13,7 @@ function prtOpd(operand_t opd);
 			$write("%s", reg_id2name(opd.base_reg));
 		opdt_immediate:
 			$write("0x%x", opd.immediate);
-		opdt_memory:
+		opdt_memory: begin
 			if(opd.mem_has_disp)
 				$write("0x%x", opd.immediate);
 			$write("(");
@@ -26,12 +26,12 @@ function prtOpd(operand_t opd);
 			//if(opd.mem_has_scale)
 				$write("0x%x", opd.scale);
 			$write(")");
-		default:
+		end
 	endcase
 	return;
 endfunction
 
-function prtInstr(fat_instruction_t ins);
+function void prtInstr(fat_instruction_t ins);
 	$write("%s ", ins.opcode_struct.name);
 	prtOpd(ins.operand0);
 	$write(", ");
