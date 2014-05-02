@@ -55,7 +55,7 @@ endfunction
 
 function automatic reg_id_t reg_name2id(reg_name_t name);
 
-	case (name) begin
+	case (name)
 		"%rax": return rax;
 		"%rcx": return rcx;
 		"%rdx": return rdx;

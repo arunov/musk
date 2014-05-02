@@ -31,14 +31,14 @@ function automatic int operand_size( /* verilator lint_off UNUSED */ fat_instruc
 endfunction
 
 function automatic int crackSIB(
-	/* verilator lint_off UNUSED */ \
-	output operand_t operand, \
-	input fat_instruction_t ins, \
-	input logic[7:0] modrm, \
-	input logic[7:0] sib, \
-	input int index, \
-	input logic[0:10*8-1] opd_bytes \
-	/* verilator lint_on UNUSED */ \
+	/* verilator lint_off UNUSED */
+	output operand_t operand,
+	input fat_instruction_t ins,
+	input logic[7:0] modrm,
+	input logic[7:0] sib,
+	input int index,
+	input logic[0:10*8-1] opd_bytes
+	/* verilator lint_on UNUSED */
 );
 	operand.opd_type = opdt_memory;
 
@@ -56,20 +56,20 @@ function automatic int crackSIB(
 
 	if (modrm[7:6] == 2'b00 && sib[2:0] == 3'b101) begin
 		operand.mem_has_disp = 1;
-		operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+		operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 		return 4;
-	begin
+	end
 
-	unique case (modrm[7:6]) begin
+	unique case (modrm[7:6])
 		2'b00 : return 0;
 		2'b01 : begin
 			operand.mem_has_disp = 1;
-			operand.disp = Uitls::le_1bytes_to_val(`get_byte(opd_bytes, index));
+			operand.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 			return 1;
 		end
 		2'b10 : begin
 			operand.mem_has_disp = 1;
-			operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+			operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 			return 4;
 		end
 		2'b11 : return 0;
@@ -105,9 +105,9 @@ function automatic int fun( \
 `ENDHANDLER
 
 `HANDLER(Iv)
-	operand.opd_type = opdt_immediate;
 	int op_size = operand_size(ins);
-	case (op_size) begin
+	operand.opd_type = opdt_immediate;
+	case (op_size)
 		16 : begin
 			operand.immediate = Utils::le_2bytes_to_val(`pget_bytes(opd_bytes, index, 2));
 			return 2;
@@ -139,15 +139,15 @@ function automatic int fun( \
 		return crackSIB(operand, ins, modrm, sib, index+1, opd_bytes);
 	end
 
-	if (modrm[7:6] == 2'b00 && modrm[2:0] = 3'b101) begin // rip relative
+	if (modrm[7:6] == 2'b00 && modrm[2:0] == 3'b101) begin // rip relative
 		operand.opd_type = opdt_memory;
 		operand.mem_rip_relative = 1;
-		operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+		operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 		return 4;
 	end
 
 	operand.base_reg = {ins.rex_prefix[REX_B], modrm[2:0]};
-	unique case (modrm[7:6]) begin
+	unique case (modrm[7:6])
 		2'b00: begin
 			operand.opd_type = opdt_memory;
 			operand.mem_has_base = 1;
@@ -157,14 +157,14 @@ function automatic int fun( \
 			operand.opd_type = opdt_memory;
 			operand.mem_has_base = 1;
 			operand.mem_has_disp = 1;
-			operand.disp = Uitls::le_1bytes_to_val(`get_byte(opd_bytes, index));
+			operand.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 			return 1;
 		end
 		2'b10: begin
 			operand.opd_type = opdt_memory;
 			operand.mem_has_base = 1;
 			operand.mem_has_disp = 1;
-			operand.disp = Uitls::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+			operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 			return 4;
 		end
 		2'b11: begin
@@ -180,8 +180,6 @@ function automatic int fun( \
 	end else begin
 		return handleEv(operand, ins, modrm, index, opd_bytes);
 	end
-`ENDDFUN
-
 `ENDHANDLER
 
 `HANDLER(rax)
@@ -207,9 +205,10 @@ function automatic int fun( \
 `define ENDDFUN endfunction
 
 `define COMPOSE(hd0, hd1) \
-	int cnt0 = handle``hd0(ins.operand0, ins, modrm, index, opd_bytes); \
+	int cnt0, cnt1; \
+	cnt0 = handle``hd0(ins.operand0, ins, modrm, index, opd_bytes); \
 	if (cnt0 < 0) return -1; \
-	int cnt1 = handle``hd1(ins.operand1, ins, modrm, index + cnt0, opd_bytes); \
+	cnt1 = handle``hd1(ins.operand1, ins, modrm, index + cnt0, opd_bytes); \
 	if (cnt1 < 0) return -1; \
 	return cnt0 + cnt1;
 

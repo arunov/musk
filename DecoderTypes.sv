@@ -1,6 +1,8 @@
 
 package DecoderTypes;
 
+import RegMap::*;
+
 typedef logic[0:16*8-1] opcode_name_t;
 typedef logic[0:16*8-1] opcode_mode_t;
 

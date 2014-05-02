@@ -154,10 +154,10 @@ import DecoderTypes::*;
 `MAP_BEGIN(opcode_map4)
 `MAP_END
 
-`define GMC(g, k, c, n, m) {g, 8'b``k, 24'h``c}: begin res.name = "n"; res.mode = "m"; end
+`define GMC(g, k, c, n, m) {32'h``g, 8'b``k, 24'h``c}: begin res.name = "n"; res.mode = "m"; end
 `define GM(g, k, n, m) `GMC(g, k, ?, n, m)
 
-function automatic opcode_struct_t group_opcode_map(logic[4:0] group, logic[7:0] key, logic [0:3*8-1] opcode);
+function automatic opcode_struct_t group_opcode_map(int group, logic[7:0] key, logic [0:3*8-1] opcode);
 	opcode_struct_t res = 0;
 	casez ({group, key, opcode})
 
