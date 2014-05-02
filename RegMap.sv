@@ -1,6 +1,6 @@
 package RegMap;
 
-parameter REG_CNT = 18;
+parameter REG_CNT = 256;
 
 typedef enum logic[7:0] {
 /** do NOT change the order **/

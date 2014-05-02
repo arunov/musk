@@ -12,7 +12,9 @@ parameter REX_W = 3, REX_R = 2, REX_X = 1, REX_B = 0;
 
 function automatic void fillFixedReg(
 	/* verilator lint_off UNUSED */
+	/* verilator lint_off UNDRIVEN */
 	output operand_t operand,
+	/* verilator lint_on UNDRIVEN */
 	input logic[7:0] rex,
 	input reg_id_t r0,
 	input reg_id_t r1
@@ -26,13 +28,15 @@ function automatic int operand_size( /* verilator lint_off UNUSED */ fat_instruc
 	if (ins.rex_prefix[REX_W]) begin
 		return 64;
 	end else begin
-		return ins.operand_size_prefix ? 16 : 32;
+		return ins.operand_size_prefix != 0 ? 16 : 32;
 	end
 endfunction
 
 function automatic int crackSIB(
 	/* verilator lint_off UNUSED */
+	/* verilator lint_off UNDRIVEN */
 	output operand_t operand,
+	/* verilator lint_on UNDRIVEN */
 	input fat_instruction_t ins,
 	input logic[7:0] modrm,
 	input logic[7:0] sib,
@@ -44,12 +48,12 @@ function automatic int crackSIB(
 
 	if (!(sib[2:0] == 3'b101 && modrm[7:6] == 2'b00)) begin
 		operand.mem_has_base = 1;
-		operand.base_reg = sib[2:0];
+		operand.base_reg = {4'b0, ins.rex_prefix[REX_B], sib[2:0]};
 	end
 
 	if (!(sib[5:3] == 3'b100)) begin
 		operand.mem_has_index = 1;
-		operand.index_reg = sib[5:3];
+		operand.index_reg = {4'b0, ins.rex_prefix[REX_X], sib[5:3]};
 	end
 
 	operand.scale = 1 << sib[7:6];
@@ -80,9 +84,11 @@ endfunction
 
 /*** Macros for defining handlers ***/
 `define HANDLER(fun) \
-function automatic int fun( \
+function automatic int handle``fun( \
 	/* verilator lint_off UNUSED */ \
+	/* verilator lint_off UNDRIVEN */\
 	output operand_t operand, \
+	/* verilator lint_on UNDRIVEN */\
 	input fat_instruction_t ins, \
 	input logic[7:0] modrm, \
 	input int index, \
@@ -129,7 +135,7 @@ function automatic int fun( \
 
 `HANDLER(Gv)
 	operand.opd_type = opdt_register;
-	operand.base_reg = {ins.rex_prefix[REX_R], modrm[5:3]};
+	operand.base_reg = {4'b0, ins.rex_prefix[REX_R], modrm[5:3]};
 	return 0;
 `ENDHANDLER
 
@@ -146,7 +152,7 @@ function automatic int fun( \
 		return 4;
 	end
 
-	operand.base_reg = {ins.rex_prefix[REX_B], modrm[2:0]};
+	operand.base_reg = {4'b0, ins.rex_prefix[REX_B], modrm[2:0]};
 	unique case (modrm[7:6])
 		2'b00: begin
 			operand.opd_type = opdt_memory;
@@ -184,7 +190,7 @@ function automatic int fun( \
 
 `HANDLER(rax)
 	operand.opd_type = opdt_register;
-	operand.base = rax;
+	operand.base_reg = rax;
 	return 0;
 `ENDHANDLER
 
@@ -256,46 +262,46 @@ function automatic int fun( \
 
 `DFUN(rax$r8_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rax, r8); 
-	return handleIv(ins.operand1, modrm, index, opd_bytes);
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rcx$r9_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rcx, r9); 
-	return handleIv(ins.operand1, modrm, index, opd_bytes);
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rdx$r10_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rdx, r10); 
-	return handleIv(ins.operand1, modrm, index, opd_bytes);
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rbx$r11_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rbx, r11); 
-	return handleIv(ins.operand1, modrm, index, opd_bytes);
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rsp$r12_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rsp, r12); 
-	return handleIv(ins.operand1, modrm, index, opd_bytes);
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rbp$r13_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rbp, r13); 
-	return handleIv(ins.operand1, modrm, index, opd_bytes);
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rsi$r14_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rsi, r14); 
-	return handleIv(ins.operand1, modrm, index, opd_bytes);
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(rdi$r15_Iv)
 	fillFixedReg(ins.operand0, ins.rex_prefix, rdi, r15); 
-	return handleIv(ins.operand1, modrm, index, opd_bytes);
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(Ev)
-	return handleEv(ins.operand0, ins.rex_prefix, modrm, index, opd_bytes);
+	return handleEv(ins.operand0, ins, modrm, index, opd_bytes);
 `ENDDFUN
 
 `DFUN(Ev_Gv)
