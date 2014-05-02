@@ -56,7 +56,8 @@ function automatic int crackSIB(
 		operand.index_reg = {4'b0, ins.rex_prefix[REX_X], sib[5:3]};
 	end
 
-	operand.scale = 1 << sib[7:6];
+	if(sib[7:6] != 0)
+		operand.scale = 1 << sib[7:6];
 
 	if (modrm[7:6] == 2'b00 && sib[2:0] == 3'b101) begin
 		operand.mem_has_disp = 1;

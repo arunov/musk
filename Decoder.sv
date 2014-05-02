@@ -62,7 +62,6 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t
 	int opcode_byte_cnt = 0;
 	int operand_byte_cnt = 0;
 	int byte_index = 0;
-	logic[3:0] byte_index_prt;
 	logic[7:0] cur_byte = `get_byte(dc_bytes, 0); 
 
 	ins = 0;
@@ -111,11 +110,15 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t
 
 	`ADVANCE_DC_POINTER(operand_byte_cnt)
 
-	/* verilator lint_off WIDTH */
-	byte_index_prt = byte_index;
-	/* verilator lint_on WIDTH */
-
-	`ins_write2("%d bytes decoded: ", byte_index_prt);
+`ifdef _INS_WRITE_
+	begin
+		logic[3:0] byte_index_prt;
+		/* verilator lint_off WIDTH */
+		byte_index_prt = byte_index;
+		/* verilator lint_on WIDTH */
+		`ins_write2("%d bytes decoded: ", byte_index_prt);
+	end
+`endif
 	`ins_short_print_bytes(dc_bytes_copy, byte_index);
 	`ins_write1("\n");
 
