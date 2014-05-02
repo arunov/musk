@@ -28,7 +28,7 @@ typedef logic[0:8*8-1] reg_name_t;
 
 function automatic reg_name_t reg_id2name(reg_id_t id);
 
-	reg_name_t map[0:REG_CNT-1] = 0;
+	reg_name_t [0:REG_CNT-1] map = 0;
 
 	map[rax] = "%rax";
 	map[rcx] = "%rcx";

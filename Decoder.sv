@@ -99,6 +99,8 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t
 	// Maximum 10 bytes of operands.
 	operand_byte_cnt = decode_operands(ins, `eget_bytes(dc_bytes, 0, 10));
 
+	InstructionPrinter::prtInstr(ins);
+
 	`ins_write1("\t\t; ");
 
 	if (operand_byte_cnt < 0) begin

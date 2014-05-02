@@ -3,7 +3,7 @@ package InstructionPrinter;
 import DecoderTypes::*;
 import RegMap::*;
 
-function void prtOpd(operand_t opd);
+function void prtOpd(/* verilator lint_off UNUSED */ operand_t opd /* verilator lint_on UNUSED */);
 	if(opd.mem_rip_relative) begin
 		$write("%%rip(0x%x)", opd.immediate);
 		return;
@@ -31,7 +31,7 @@ function void prtOpd(operand_t opd);
 	return;
 endfunction
 
-function void prtInstr(fat_instruction_t ins);
+function void prtInstr(/* verilator lint_off UNUSED */ fat_instruction_t ins /* verilator lint_on UNUSED */);
 	$write("%s ", ins.opcode_struct.name);
 	prtOpd(ins.operand0);
 	$write(", ");
