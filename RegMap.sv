@@ -4,7 +4,11 @@ parameter REG_CNT = 256;
 
 typedef enum logic[7:0] {
 /** do NOT change the order **/
-	rax = 0,
+/** special registers (need special handling) **/
+	rnil = 0,
+	rip,
+/** normal registers **/
+	rax = 8'h10,
 	rcx,
 	rdx,
 	rbx,
@@ -30,6 +34,10 @@ function automatic reg_name_t reg_id2name(reg_id_t id);
 
 	reg_name_t [0:REG_CNT-1] map = 0;
 
+	/** special registers **/
+	map[rnil] = "%rnil";
+	map[rip] = "%rip";
+	/** normal registers **/
 	map[rax] = "%rax";
 	map[rcx] = "%rcx";
 	map[rdx] = "%rdx";
@@ -49,6 +57,8 @@ function automatic reg_name_t reg_id2name(reg_id_t id);
 	map[rflags] = "%rflags";
 	map[rh0] = "%rh0";
 
+	if (map[id] == 0) $display("ERROR: no mapping for reg_id2name %x: ", id);
+
 	return map[id];
 
 endfunction
@@ -56,6 +66,10 @@ endfunction
 function automatic reg_id_t reg_name2id(reg_name_t name);
 
 	case (name)
+		/** special registers **/
+		"%rnil": return rnil;
+		"%rip": return rip;
+		/** normal registers **/
 		"%rax": return rax;
 		"%rcx": return rcx;
 		"%rdx": return rdx;

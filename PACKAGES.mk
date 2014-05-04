@@ -7,5 +7,6 @@ PACKAGES += OpcodeMap.sv
 PACKAGES += OperandDecoder.sv
 PACKAGES += InstructionPrinter.sv
 PACKAGES += Decoder.sv
+PACKAGES += MicroOp.sv
 PACKAGES += ALU.sv
 PACKAGES += CACHE.sv

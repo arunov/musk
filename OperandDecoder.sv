@@ -47,13 +47,11 @@ function automatic int crackSIB(
 	operand.opd_type = opdt_memory;
 
 	if (!(sib[2:0] == 3'b101 && modrm[7:6] == 2'b00)) begin
-		operand.mem_has_base = 1;
-		operand.base_reg = {4'b0, ins.rex_prefix[REX_B], sib[2:0]};
+		operand.base_reg = {4'b1, ins.rex_prefix[REX_B], sib[2:0]};
 	end
 
 	if (!(sib[5:3] == 3'b100)) begin
-		operand.mem_has_index = 1;
-		operand.index_reg = {4'b0, ins.rex_prefix[REX_X], sib[5:3]};
+		operand.index_reg = {4'b1, ins.rex_prefix[REX_X], sib[5:3]};
 	end
 
 	if(sib[7:6] != 0)
@@ -136,7 +134,7 @@ function automatic int handle``fun( \
 
 `HANDLER(Gv)
 	operand.opd_type = opdt_register;
-	operand.base_reg = {4'b0, ins.rex_prefix[REX_R], modrm[5:3]};
+	operand.base_reg = {4'b1, ins.rex_prefix[REX_R], modrm[5:3]};
 	return 0;
 `ENDHANDLER
 
@@ -148,28 +146,26 @@ function automatic int handle``fun( \
 
 	if (modrm[7:6] == 2'b00 && modrm[2:0] == 3'b101) begin // rip relative
 		operand.opd_type = opdt_memory;
-		operand.mem_rip_relative = 1;
+		operand.base_reg = rip;
+		operand.has_disp = 1;
 		operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 		return 4;
 	end
 
-	operand.base_reg = {4'b0, ins.rex_prefix[REX_B], modrm[2:0]};
+	operand.base_reg = {4'b1, ins.rex_prefix[REX_B], modrm[2:0]};
 	unique case (modrm[7:6])
 		2'b00: begin
 			operand.opd_type = opdt_memory;
-			operand.mem_has_base = 1;
 			return 0;
 		end
 		2'b01: begin
 			operand.opd_type = opdt_memory;
-			operand.mem_has_base = 1;
 			operand.mem_has_disp = 1;
 			operand.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 			return 1;
 		end
 		2'b10: begin
 			operand.opd_type = opdt_memory;
-			operand.mem_has_base = 1;
 			operand.mem_has_disp = 1;
 			operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 			return 4;
@@ -335,14 +331,16 @@ function automatic int fun( \
 
 `DFUN(Jz)
 	ins.operand0.opd_type = opdt_memory;
-	ins.operand0.mem_rip_relative = 1;
+	ins.operand0.base_reg = rip;
+	ins.operand0.has_disp = 1;
 	ins.operand0.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 	return 4;
 `ENDDFUN
 
 `DFUN(Jb)
 	ins.operand0.opd_type = opdt_memory;
-	ins.operand0.mem_rip_relative = 1;
+	ins.operand0.base_reg = rip;
+	ins.operand0.has_disp = 1;
 	ins.operand0.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 	return 1;
 `ENDDFUN

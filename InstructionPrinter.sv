@@ -14,11 +14,6 @@ import RegMap::*;
 	end \
 
 function logic prtOpd(/* verilator lint_off UNUSED */ operand_t opd /* verilator lint_on UNUSED */);
-	if(opd.mem_rip_relative) begin
-		`ins_write1("%%rip:");
-		`PRT_SIGNED(opd.disp);
-		return 1;
-	end
 	unique case(opd.opd_type)
 		opdt_register: begin
 			/* verilator lint_off WIDTH */
@@ -32,15 +27,15 @@ function logic prtOpd(/* verilator lint_off UNUSED */ operand_t opd /* verilator
 			if(opd.mem_has_disp)
 				`PRT_SIGNED(opd.disp)
 			`ins_write1("(");
-			if(opd.mem_has_base) begin
+			if(opd.base_reg != rnil) begin
 				/* verilator lint_off WIDTH */
 				logic[0:4*8-1] regname = reg_id2name(opd.base_reg);
 				/* verilator lint_on WIDTH */
 				`ins_write2("%s", regname);
 			end
-			if(opd.mem_has_index || opd.scale != 0)
+			if(opd.index_reg != rnil || opd.scale != 0)
 				`ins_write1(",");
-			if(opd.mem_has_index) begin
+			if(opd.index_reg != rnil) begin
 				/* verilator lint_off WIDTH */
 				logic[0:4*8-1] regname = reg_id2name(opd.base_reg);
 				/* verilator lint_on WIDTH */
