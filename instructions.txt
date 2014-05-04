@@ -4,10 +4,10 @@ and
 callq
 cmp
 imul
-jae
-je
-jg
-jge
+jnb/jae
+jz/je
+jnle/jg
+jnl/jge
 jl
 jle
 jmp
