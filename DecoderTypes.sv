@@ -22,13 +22,9 @@ typedef struct packed {
 	operand_type_t opd_type;
 	reg_id_t base_reg;
 	reg_id_t index_reg;
-	logic[1:0] scale;
-	logic[63:0] disp;
-	logic[63:0] immediate; 
 } operand_t;
 
 typedef struct packed {
-	logic[63:0] rip_val;
 	logic[7:0] lock_repeat_prefix;
 	logic[7:0] segment_branch_prefix;
 	logic[7:0] operand_size_prefix;
@@ -37,6 +33,10 @@ typedef struct packed {
 	opcode_struct_t opcode_struct;
 	operand_t operand0;
 	operand_t operand1;
+	logic[1:0] scale;
+	logic[63:0] disp;
+	logic[63:0] immediate; 
+	logic[63:0] rip_val;
 } fat_instruction_t;
 
 typedef enum logic[7:0] {
@@ -65,7 +65,6 @@ typedef enum logic[7:0] {
 } micro_opcode_t;
 
 typedef struct packed {
-	logic[63:0] rip_val;
 	micro_opcode_t opcode;
 	reg_id_t src0_id;
 	reg_id_t src1_id;
@@ -82,6 +81,7 @@ typedef struct packed {
 	logic[1:0] scale;
 	logic[63:0] disp;
 	logic[63:0] immediate;
+	logic[63:0] rip_val;
 } micro_op_t;
 
 endpackage

@@ -11,11 +11,12 @@ import RegMap::*;
 
 function automatic logic[63:0] readval( 
 	/* verilator lint_off UNUSED */
+	fat_instruction_t ins,
 	operand_t operand,
 	logic[0:16*64-1] reg_file 
 	/* verilator lint_on UNUSED */
 );
-	if (operand.base_reg == rimm) return operand.immediate; 
+	if (operand.base_reg == rimm) return ins.immediate; 
 	return `get_64(reg_file, reg_num(operand.base_reg));
 endfunction
 
@@ -43,8 +44,8 @@ function automatic logic alu(
 
 	if (fat_inst.opcode_struct.name == "retq" || fat_inst.opcode_struct.name == 0) return 1;
 
-	vala = readval(fat_inst.operand0, reg_file_in);
-	valb = readval(fat_inst.operand1, reg_file_in);
+	vala = readval(fat_inst, fat_inst.operand0, reg_file_in);
+	valb = readval(fat_inst, fat_inst.operand1, reg_file_in);
 
 	reg_file_out = reg_file_in;
 	case (fat_inst.opcode_struct.name)

@@ -13,7 +13,7 @@ import RegMap::*;
 		`ins_write3("%s0x%0x",`SIGN(snum), `UHEX(snum)); \
 	end \
 
-function logic prtOpd(/* verilator lint_off UNUSED */ operand_t opd /* verilator lint_on UNUSED */);
+function logic prtOpd(/* verilator lint_off UNUSED */ fat_instruction_t ins, operand_t opd /* verilator lint_on UNUSED */);
 	unique case(opd.opd_type)
 		opdt_register: begin
 			if (opd.base_reg != rimm) begin
@@ -22,12 +22,12 @@ function logic prtOpd(/* verilator lint_off UNUSED */ operand_t opd /* verilator
 				/* verilator lint_on WIDTH */
 				`ins_write2("%s", regname);
 			end else begin
-				`PRT_SIGNED(opd.immediate)
+				`PRT_SIGNED(ins.immediate)
 			end
 		end
 		opdt_memory: begin
-			if(opd.disp != 0)
-				`PRT_SIGNED(opd.disp)
+			if(ins.disp != 0)
+				`PRT_SIGNED(ins.disp)
 			`ins_write1("(");
 			if(opd.base_reg != rnil) begin
 				/* verilator lint_off WIDTH */
@@ -35,7 +35,7 @@ function logic prtOpd(/* verilator lint_off UNUSED */ operand_t opd /* verilator
 				/* verilator lint_on WIDTH */
 				`ins_write2("%s", regname);
 			end
-			if(opd.index_reg != rnil || opd.scale != 0)
+			if(opd.index_reg != rnil || ins.scale != 0)
 				`ins_write1(",");
 			if(opd.index_reg != rnil) begin
 				/* verilator lint_off WIDTH */
@@ -43,8 +43,8 @@ function logic prtOpd(/* verilator lint_off UNUSED */ operand_t opd /* verilator
 				/* verilator lint_on WIDTH */
 				`ins_write2("%s", regname);
 			end
-			if(opd.scale != 0) begin
-				logic [63:0] ss = 1 << opd.scale;
+			if(ins.scale != 0) begin
+				logic [63:0] ss = 1 << ins.scale;
 				`ins_write1(",");
 				`PRT_SIGNED(ss)
 			end
@@ -58,9 +58,9 @@ endfunction
 
 function void prtInstr(/* verilator lint_off UNUSED */ fat_instruction_t ins /* verilator lint_on UNUSED */);
 	`ins_write2("%s  \t", ins.opcode_struct.name);
-	if(prtOpd(ins.operand0) && ins.operand1.opd_type != opdt_nil)
+	if(prtOpd(ins, ins.operand0) && ins.operand1.opd_type != opdt_nil)
 		`ins_write1(", ");
-	prtOpd(ins.operand1);
+	prtOpd(ins, ins.operand1);
 endfunction
 
 endpackage

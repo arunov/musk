@@ -7,49 +7,31 @@ parameter MAX_MOP_CNT = 4;
 
 function automatic micro_op_t crackMemAddr(operand_t opd);
 	micro_op_t mop = 0;
-
+	mop.src0_id = opd.base_reg;
+	mop.src1_id = opd.index_reg;
 	mop.scale = opd.scale;
 	mop.disp = opd.disp;
-
-	if (opd.mem_rip_relative) begin
-		mop.src0_mst = mst_rip;
-		return mop;
-	end
-
-	if (opd.mem_has_base) begin
-		mop.src0_mst = mst_register;	
-		mop.src0_reg_id = opd.base_reg;
-	end
-
-	if (opd.mem_has_index) begin
-		mop.src1_mst = mst_register;
-		mop.src1_reg_id = opd.index_reg;
-	end
-
 	return mop;
 endfunction
 
-function automatic micro_op_t mop_ld(reg_id_t, operand_t opd);
+function automatic micro_op_t mop_ld(reg_id_t dst, operand_t opd);
 	micro_op_t mop = crackMemAddr(opd);
 	mop.opcode = m_ld;
-	mop.has_dst0 = 1;
-	mop.dst0_reg_id = dst_reg;
+	mop.dst0_id = dst;
 	return mop;
 endfunction
 
-function automatic micro_op_t mop_st(operand_t opd, reg_id_t src_reg);
+function automatic micro_op_t mop_st(operand_t opd, reg_id_t src);
 	micro_op_t mop = crackMemAddr(opd);
 	mop.opcode = m_st;
-	mop.src2_mst = mst_register;
-	mop.src2_reg_id = src_reg;
+	mop.src2_id = src;
 	return mop;
 endfunction
 
 function automatic micro_op_t mop_r0(micro_opcode_t mopcode, reg_id_t reg0);
 	micro_op_t mop;
 	mop.opcode = mopcode;
-	mop.src0_mst = mst_register;
-	mop.src0_reg_id = reg0;
+	mop.src0_id = reg0;
 	return mop;
 endfunction
 

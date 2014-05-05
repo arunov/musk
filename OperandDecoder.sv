@@ -58,21 +58,21 @@ function automatic int crackSIB(
 		operand.index_reg = reg_id({ins.rex_prefix[REX_X], sib[5:3]});
 	end
 
-	operand.scale = sib[7:6];
+	ins.scale = sib[7:6];
 
 	if (modrm[7:6] == 2'b00 && sib[2:0] == 3'b101) begin
-		operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+		ins.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 		return 4;
 	end
 
 	unique case (modrm[7:6])
 		2'b00 : return 0;
 		2'b01 : begin
-			operand.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
+			ins.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 			return 1;
 		end
 		2'b10 : begin
-			operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+			ins.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 			return 4;
 		end
 		2'b11 : return 0;
@@ -100,14 +100,14 @@ function automatic int handle``fun( \
 `HANDLER(Ib)
 	operand.opd_type = opdt_register;
 	operand.base_reg = rimm;
-	operand.immediate = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
+	ins.immediate = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 	return 1;
 `ENDHANDLER
 
 `HANDLER(Iz)
 	operand.opd_type = opdt_register;
 	operand.base_reg = rimm;
-	operand.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+	ins.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 	return 4;
 `ENDHANDLER
 
@@ -117,15 +117,15 @@ function automatic int handle``fun( \
 	operand.base_reg = rimm;
 	case (op_size)
 		16 : begin
-			operand.immediate = Utils::le_2bytes_to_val(`pget_bytes(opd_bytes, index, 2));
+			ins.immediate = Utils::le_2bytes_to_val(`pget_bytes(opd_bytes, index, 2));
 			return 2;
 		end
 		32 : begin
-			operand.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+			ins.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 			return 4;
 		end
 		64 : begin
-			operand.immediate = Utils::le_8bytes_to_val(`pget_bytes(opd_bytes, index, 8));
+			ins.immediate = Utils::le_8bytes_to_val(`pget_bytes(opd_bytes, index, 8));
 			return 8;
 		end
 		default: begin
@@ -150,7 +150,7 @@ function automatic int handle``fun( \
 	if (modrm[7:6] == 2'b00 && modrm[2:0] == 3'b101) begin // rip relative
 		operand.opd_type = opdt_memory;
 		operand.base_reg = rip;
-		operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+		ins.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 		return 4;
 	end
 
@@ -162,12 +162,12 @@ function automatic int handle``fun( \
 		end
 		2'b01: begin
 			operand.opd_type = opdt_memory;
-			operand.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
+			ins.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 			return 1;
 		end
 		2'b10: begin
 			operand.opd_type = opdt_memory;
-			operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+			ins.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 			return 4;
 		end
 		2'b11: begin
@@ -328,14 +328,14 @@ function automatic int fun( \
 `DFUN(Jz)
 	ins.operand0.opd_type = opdt_register;
 	ins.operand0.base_reg = rimm;
-	ins.operand0.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+	ins.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 	return 4;
 `ENDDFUN
 
 `DFUN(Jb)
 	ins.operand0.opd_type = opdt_register;
 	ins.operand0.base_reg = rimm;
-	ins.operand0.immediate = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
+	ins.immediate = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 	return 1;
 `ENDDFUN
 
