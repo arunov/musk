@@ -23,7 +23,8 @@ module MuskCore (
 
 	logic rd_reqcyc_ff, rd_respcyc;
 	logic [0:64*8-1] rd_data;
-	MuskbusReader reader(reset, clk, bus, rd_reqcyc_ff, fetch_addr_ff, rd_respcyc, rd_data);
+	//MuskbusReader reader(reset, clk, bus, rd_reqcyc_ff, fetch_addr_ff, rd_respcyc, rd_data);
+	SetAssocReadCache reader(reset, clk, bus, rd_reqcyc_ff, fetch_addr_ff, rd_respcyc, rd_data);
 
 /*
 	always_comb begin
