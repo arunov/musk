@@ -41,7 +41,7 @@ function automatic int crackSIB(
 	/* verilator lint_off UNDRIVEN */
 	output operand_t operand,
 	/* verilator lint_on UNDRIVEN */
-	input fat_instruction_t ins,
+	inout fat_instruction_t ins,
 	input logic[7:0] modrm,
 	input logic[7:0] sib,
 	input int index,
@@ -88,7 +88,7 @@ function automatic int handle``fun( \
 	/* verilator lint_off UNDRIVEN */\
 	output operand_t operand, \
 	/* verilator lint_on UNDRIVEN */\
-	input fat_instruction_t ins, \
+	inout fat_instruction_t ins, \
 	input logic[7:0] modrm, \
 	input int index, \
 	input logic[0:10*8-1] opd_bytes \
