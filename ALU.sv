@@ -42,7 +42,7 @@ function automatic logic alu(
 
 	logic[63:0] vala, valb;
 
-	if (fat_inst.opcode_struct.name == "retq" || fat_inst.opcode_struct.name == 0) return 1;
+	if (fat_inst.opcode_struct.name == "retq") return 1;
 
 	vala = readval(fat_inst, fat_inst.operand0, reg_file_in);
 	valb = readval(fat_inst, fat_inst.operand1, reg_file_in);

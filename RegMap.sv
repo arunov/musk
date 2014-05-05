@@ -1,6 +1,6 @@
 package RegMap;
 
-parameter REG_FILE_SIZE = 18;
+parameter REG_FILE_SIZE = 20;
 
 typedef enum logic[7:0] {
 /** do NOT change the listing order **/
@@ -8,6 +8,9 @@ typedef enum logic[7:0] {
 	rnil = 8'b00000000,
 	rip,
 	rimm,
+	// fake registers that represent contant values
+	rv0,
+	rv8,
 	/** real registers **/
 	rax  = 8'b10000000,
 	rcx,
@@ -26,7 +29,9 @@ typedef enum logic[7:0] {
 	r14,
 	r15,
 	rflags,
-	rh0
+	rh0,
+	rh1,
+	rh2
 } reg_id_t;
 
 typedef logic[0:8*8-1] reg_name_t;
@@ -46,6 +51,8 @@ function automatic reg_name_t reg_id2name(reg_id_t id);
 	map[rnil] = "%rnil";
 	map[rip] = "%rip";
 	map[rimm] = "%rimm";
+	map[rv0] = "%rv0";
+	map[rv8] = "%rv8";
 	/** real registers **/
 	map[rax] = "%rax";
 	map[rcx] = "%rcx";
@@ -65,6 +72,8 @@ function automatic reg_name_t reg_id2name(reg_id_t id);
 	map[r15] = "%r15";
 	map[rflags] = "%rflags";
 	map[rh0] = "%rh0";
+	map[rh1] = "%rh1";
+	map[rh2] = "%rh2";
 
 	if (map[id] == 0) $display("ERROR: no mapping for reg_id2name %x: ", id);
 
@@ -79,6 +88,8 @@ function automatic reg_id_t reg_name2id(reg_name_t name);
 		"%rnil": return rnil;
 		"%rip": return rip;
 		"%rimm": return rimm;
+		"%rv0": return rv0;
+		"%rv8": return rv8;
 		/** real registers **/
 		"%rax": return rax;
 		"%rcx": return rcx;
@@ -98,6 +109,8 @@ function automatic reg_id_t reg_name2id(reg_name_t name);
 		"%r15": return r15;
 		"%rflags": return rflags;
 		"%rh0": return rh0;
+		"%rh1": return rh1;
+		"%rh2": return rh2;
 		default : begin
 			$display("ERROR: no mapping for reg_name2id %s: ", name);
 			return rax;

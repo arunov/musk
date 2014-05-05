@@ -39,13 +39,23 @@ typedef struct packed {
 	logic[63:0] rip_val;
 } fat_instruction_t;
 
+/*** 
+The processing of a micro op will go through 4 stages: register read, execute, memory access, register write.
+To keep things (maybe) simple, 'execute' and 'memory access' should NOT make use of src and dst ids.
+Design micro ops according to this rule.
+
+All registers are prefixed with flag bits.
+***/
+
 typedef enum logic[7:0] {
 	m_ld,
 	m_st,
 	m_add,
 	m_and,
-	m_imul,
-	M_JMIN,
+	m_cpy,
+	m_imul_l,
+	m_imul_h,
+	M_JMIN, // Just a marker
 	m_jnb,
 	m_jz,
 	m_jnle,
@@ -54,7 +64,7 @@ typedef enum logic[7:0] {
 	m_jle,
 	m_jmp,
 	m_jne,
-	M_JMAX,
+	M_JMAX, // Just a marker
 	m_lea,
 	m_or,
 	m_shl,
@@ -68,16 +78,10 @@ typedef struct packed {
 	micro_opcode_t opcode;
 	reg_id_t src0_id;
 	reg_id_t src1_id;
-	reg_id_t src2_id;
-	reg_id_t dst0_id;
-	reg_id_t dst1_id;
-	reg_id_t dst2_id;
+	reg_id_t dst_id;
 	logic[63:0] src0_val;
 	logic[63:0] src1_val;
-	logic[63:0] src2_val;
-	logic[63:0] dst0_val;
-	logic[63:0] dst1_val;
-	logic[63:0] dst2_val;
+	logic[63:0] dst_val;
 	logic[1:0] scale;
 	logic[63:0] disp;
 	logic[63:0] immediate;

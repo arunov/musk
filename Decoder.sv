@@ -49,10 +49,7 @@ endfunction
 	byte_index += (x); \
 	cur_byte = `get_byte(dc_bytes, byte_index);
 
-`define SKIP_AND_EXIT \
-	$display("skip one byte: %h", `get_byte(dc_bytes_copy, 0)); \
-	return 1;
-
+/** Return number of bytes decoded, or -1 for error. **/
 function automatic int decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t ins);
 
 	/* verilator lint_off UNUSED */
@@ -88,8 +85,8 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t
 	if (ins.opcode_struct.name == 0) begin
 		`ins_write1("invalid opcode: ");
 		`ins_short_print_bytes(ins.opcode_struct.opcode, 3);
-		`ins_write1(": ");
-		`SKIP_AND_EXIT;
+		`ins_write1("\n");
+		return -1;
 	end
 
 	`ADVANCE_DC_POINTER(opcode_byte_cnt)
@@ -99,18 +96,19 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t
 	// Maximum 10 bytes of operands.
 	operand_byte_cnt = decode_operands(ins, `eget_bytes(dc_bytes, 0, 10));
 
-	InstructionPrinter::prtInstr(ins);
-
-	`ins_write1("\t\t; ");
 
 	if (operand_byte_cnt < 0) begin
-		`ins_write2("invalid operands: %h: ", `eget_bytes(dc_bytes, 0, 10));
-		`SKIP_AND_EXIT
+		`ins_write2("invalid operands: %h: \n", `eget_bytes(dc_bytes, 0, 10));
+		return -1;
 	end
 
 	`ADVANCE_DC_POINTER(operand_byte_cnt)
 
 `ifdef _INS_WRITE_
+
+	InstructionPrinter::prtInstr(ins);
+	`ins_write1("\t\t; ");
+
 	begin
 		logic[3:0] byte_index_prt;
 		/* verilator lint_off WIDTH */
@@ -118,9 +116,10 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t
 		/* verilator lint_on WIDTH */
 		`ins_write2("%d bytes decoded: ", byte_index_prt);
 	end
-`endif
+
 	`ins_short_print_bytes(dc_bytes_copy, byte_index);
 	`ins_write1("\n");
+`endif
 
 	return byte_index;
 

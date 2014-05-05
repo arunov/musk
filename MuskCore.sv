@@ -19,7 +19,7 @@ module MuskCore (
 
 	logic[0:DECBUF_SIZE*8-1] decode_buffer_ff;
 	logic[63:0] fetch_addr_ff;
-	int decode_offset_ff, decode_buf_head_ff, decode_buf_tail_ff, bytes_decoded_this_cycle;
+	int decode_offset_ff, decode_buf_head_ff, decode_buf_tail_ff, bytes_decoded_this_cycle, decode_return;
 
 	logic rd_reqcyc_ff, rd_respcyc;
 	logic [0:64*8-1] rd_data;
@@ -87,15 +87,22 @@ module MuskCore (
 
 	always_comb begin
 		if (can_decode) begin
-			bytes_decoded_this_cycle = decode(decode_bytes, fat_inst_cb);
+			decode_return = decode(decode_bytes, fat_inst_cb);
+			if (decode_return > 0) begin
+				bytes_decoded_this_cycle = decode_return;
+			end else begin
+				$display("skip one byte: %h", `get_byte(decode_bytes, 0));
+				bytes_decoded_this_cycle = 1;
+			end
 		end else begin
+			decode_return = 0;
 			bytes_decoded_this_cycle = 0;
 			fat_inst_cb = 0;
 		end
 	end
 
 	logic decode_valid_cb;
-	assign decode_valid_cb = can_decode && bytes_decoded_this_cycle > 0;
+	assign decode_valid_cb = can_decode && decode_return > 0;
 
 	always_ff @ (posedge clk) begin
 		if (reset) begin 
