@@ -1,12 +1,13 @@
 
 `include "MacroUtils.sv"
 
-`define dobinop(opcode, oper)	"opcode": `get_64(reg_file_out, fat_inst.operand0.base_reg) = vala oper valb;
-`define domovop(opcode)		"opcode": `get_64(reg_file_out, fat_inst.operand0.base_reg) = valb;
+`define dobinop(opcode, oper)	"opcode": `get_64(reg_file_out, reg_num(fat_inst.operand0.base_reg)) = vala oper valb;
+`define domovop(opcode)		"opcode": `get_64(reg_file_out, reg_num(fat_inst.operand0.base_reg)) = valb;
 
 package ALU;
 
 import DecoderTypes::*;
+import RegMap::*;
 
 function automatic logic[63:0] readval( 
 	/* verilator lint_off UNUSED */
@@ -14,8 +15,8 @@ function automatic logic[63:0] readval(
 	logic[0:16*64-1] reg_file 
 	/* verilator lint_on UNUSED */
 );
-	if (operand.opd_type == opdt_register) return `get_64(reg_file, operand.base_reg);
-	return operand.immediate;
+	if (operand.base_reg == rimm) return operand.immediate; 
+	return `get_64(reg_file, reg_num(operand.base_reg));
 endfunction
 
 function automatic void doimul(

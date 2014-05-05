@@ -10,6 +10,10 @@ import RegMap::*;
 
 parameter REX_W = 3, REX_R = 2, REX_X = 1, REX_B = 0;
 
+function automatic reg_id_t reg_id(logic[3:0] code);
+	return {4'b1000, code};
+endfunction
+
 function automatic void fillFixedReg(
 	/* verilator lint_off UNUSED */
 	/* verilator lint_off UNDRIVEN */
@@ -47,18 +51,16 @@ function automatic int crackSIB(
 	operand.opd_type = opdt_memory;
 
 	if (!(sib[2:0] == 3'b101 && modrm[7:6] == 2'b00)) begin
-		operand.base_reg = {4'b1, ins.rex_prefix[REX_B], sib[2:0]};
+		operand.base_reg = reg_id({ins.rex_prefix[REX_B], sib[2:0]});
 	end
 
 	if (!(sib[5:3] == 3'b100)) begin
-		operand.index_reg = {4'b1, ins.rex_prefix[REX_X], sib[5:3]};
+		operand.index_reg = reg_id({ins.rex_prefix[REX_X], sib[5:3]});
 	end
 
-	if(sib[7:6] != 0)
-		operand.scale = 1 << sib[7:6];
+	operand.scale = sib[7:6];
 
 	if (modrm[7:6] == 2'b00 && sib[2:0] == 3'b101) begin
-		operand.mem_has_disp = 1;
 		operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 		return 4;
 	end
@@ -66,12 +68,10 @@ function automatic int crackSIB(
 	unique case (modrm[7:6])
 		2'b00 : return 0;
 		2'b01 : begin
-			operand.mem_has_disp = 1;
 			operand.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 			return 1;
 		end
 		2'b10 : begin
-			operand.mem_has_disp = 1;
 			operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 			return 4;
 		end
@@ -98,20 +98,23 @@ function automatic int handle``fun( \
 
 /*** start of handlers ***/
 `HANDLER(Ib)
-	operand.opd_type = opdt_immediate;
+	operand.opd_type = opdt_register;
+	operand.base_reg = rimm;
 	operand.immediate = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 	return 1;
 `ENDHANDLER
 
 `HANDLER(Iz)
-	operand.opd_type = opdt_immediate;
+	operand.opd_type = opdt_register;
+	operand.base_reg = rimm;
 	operand.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 	return 4;
 `ENDHANDLER
 
 `HANDLER(Iv)
 	int op_size = operand_size(ins);
-	operand.opd_type = opdt_immediate;
+	operand.opd_type = opdt_register;
+	operand.base_reg = rimm;
 	case (op_size)
 		16 : begin
 			operand.immediate = Utils::le_2bytes_to_val(`pget_bytes(opd_bytes, index, 2));
@@ -134,7 +137,7 @@ function automatic int handle``fun( \
 
 `HANDLER(Gv)
 	operand.opd_type = opdt_register;
-	operand.base_reg = {4'b1, ins.rex_prefix[REX_R], modrm[5:3]};
+	operand.base_reg = reg_id({ins.rex_prefix[REX_R], modrm[5:3]});
 	return 0;
 `ENDHANDLER
 
@@ -147,12 +150,11 @@ function automatic int handle``fun( \
 	if (modrm[7:6] == 2'b00 && modrm[2:0] == 3'b101) begin // rip relative
 		operand.opd_type = opdt_memory;
 		operand.base_reg = rip;
-		operand.has_disp = 1;
 		operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 		return 4;
 	end
 
-	operand.base_reg = {4'b1, ins.rex_prefix[REX_B], modrm[2:0]};
+	operand.base_reg = reg_id({ins.rex_prefix[REX_B], modrm[2:0]});
 	unique case (modrm[7:6])
 		2'b00: begin
 			operand.opd_type = opdt_memory;
@@ -160,13 +162,11 @@ function automatic int handle``fun( \
 		end
 		2'b01: begin
 			operand.opd_type = opdt_memory;
-			operand.mem_has_disp = 1;
 			operand.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 			return 1;
 		end
 		2'b10: begin
 			operand.opd_type = opdt_memory;
-			operand.mem_has_disp = 1;
 			operand.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 			return 4;
 		end
@@ -321,27 +321,21 @@ function automatic int fun( \
 	`COMPOSE(Gv, M);
 `ENDDFUN
 
-`DFUN(Ev_rax)
-	`COMPOSE(Ev, rax);
-`ENDDFUN
-
 `DFUN(rax_Iz)
 	`COMPOSE(rax, Iz);
 `ENDDFUN
 
 `DFUN(Jz)
-	ins.operand0.opd_type = opdt_memory;
-	ins.operand0.base_reg = rip;
-	ins.operand0.has_disp = 1;
-	ins.operand0.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+	operand.opd_type = opdt_register;
+	operand.base_reg = rimm;
+	ins.operand0.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 	return 4;
 `ENDDFUN
 
 `DFUN(Jb)
-	ins.operand0.opd_type = opdt_memory;
-	ins.operand0.base_reg = rip;
-	ins.operand0.has_disp = 1;
-	ins.operand0.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
+	operand.opd_type = opdt_register;
+	operand.base_reg = rimm;
+	ins.operand0.immediate = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 	return 1;
 `ENDDFUN
 
@@ -360,7 +354,6 @@ function automatic logic has_modrm( /* verilator lint_off UNUSED */ fat_instruct
 		"Ev_Gv": return 1;
 		"Ev_Ib": return 1;
 		"Ev_Iz": return 1;
-		"Ev_rax": return 1;
 		"Gv_Ev": return 1;
 		"Gv_M": return 1;
 		default: return 0;
@@ -410,7 +403,6 @@ function automatic int decode_operands(
 		`D(Ev_Iz)
 		`D(Gv_Ev)
 		`D(Gv_M)
-		`D(Ev_rax)
 		`D(rax_Iz)
 		`D(Jz)
 		`D(Jb)

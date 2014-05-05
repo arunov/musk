@@ -1,14 +1,15 @@
 package RegMap;
 
-parameter REG_CNT = 256;
+parameter REG_FILE_SIZE = 18;
 
 typedef enum logic[7:0] {
-/** do NOT change the order **/
-/** special registers (need special handling) **/
-	rnil = 0,
+/** do NOT change the listing order **/
+	/** fake registers **/
+	rnil = 8'b00000000,
 	rip,
-/** normal registers **/
-	rax = 8'h10,
+	rimm,
+	/** real registers **/
+	rax  = 8'b10000000,
 	rcx,
 	rdx,
 	rbx,
@@ -30,14 +31,22 @@ typedef enum logic[7:0] {
 
 typedef logic[0:8*8-1] reg_name_t;
 
+function automatic logic[7:0] reg_num(reg_id_t id);
+	if (id < rax) begin
+		$display("ERROR: reg_num: attempt to access fake register");
+	end
+	return {1'b0, id[6:0]};
+endfunction
+
 function automatic reg_name_t reg_id2name(reg_id_t id);
 
-	reg_name_t [0:REG_CNT-1] map = 0;
+	reg_name_t [0:255] map = 0;
 
-	/** special registers **/
+	/** fake registers **/
 	map[rnil] = "%rnil";
 	map[rip] = "%rip";
-	/** normal registers **/
+	map[rimm] = "%rimm";
+	/** real registers **/
 	map[rax] = "%rax";
 	map[rcx] = "%rcx";
 	map[rdx] = "%rdx";
@@ -66,10 +75,11 @@ endfunction
 function automatic reg_id_t reg_name2id(reg_name_t name);
 
 	case (name)
-		/** special registers **/
+		/** fake registers **/
 		"%rnil": return rnil;
 		"%rip": return rip;
-		/** normal registers **/
+		"%rimm": return rimm;
+		/** real registers **/
 		"%rax": return rax;
 		"%rcx": return rcx;
 		"%rdx": return rdx;
