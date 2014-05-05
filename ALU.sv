@@ -41,6 +41,8 @@ function automatic logic alu(
 
 	logic[63:0] vala, valb;
 
+	if (fat_inst.opcode_struct.name == "retq" || fat_inst.opcode_struct.name == 0) return 1;
+
 	vala = readval(fat_inst.operand0, reg_file_in);
 	valb = readval(fat_inst.operand1, reg_file_in);
 
@@ -54,7 +56,7 @@ function automatic logic alu(
 		"imul": doimul(vala, valb, `get_64(reg_file_out, 0), `get_64(reg_file_out, 2));
 	endcase
 
-	return fat_inst.opcode_struct.name == "retq";
+	return 0;
 
 endfunction
 

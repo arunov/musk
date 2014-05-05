@@ -326,15 +326,15 @@ function automatic int fun( \
 `ENDDFUN
 
 `DFUN(Jz)
-	operand.opd_type = opdt_register;
-	operand.base_reg = rimm;
+	ins.operand0.opd_type = opdt_register;
+	ins.operand0.base_reg = rimm;
 	ins.operand0.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
 	return 4;
 `ENDDFUN
 
 `DFUN(Jb)
-	operand.opd_type = opdt_register;
-	operand.base_reg = rimm;
+	ins.operand0.opd_type = opdt_register;
+	ins.operand0.base_reg = rimm;
 	ins.operand0.immediate = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
 	return 1;
 `ENDDFUN

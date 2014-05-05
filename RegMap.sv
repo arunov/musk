@@ -33,7 +33,7 @@ typedef logic[0:8*8-1] reg_name_t;
 
 function automatic logic[7:0] reg_num(reg_id_t id);
 	if (id < rax) begin
-		$display("ERROR: reg_num: attempt to access fake register");
+		$display("ERROR: reg_num: attempt to access fake register: %x", id);
 	end
 	return {1'b0, id[6:0]};
 endfunction

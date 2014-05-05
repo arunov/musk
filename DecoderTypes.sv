@@ -62,7 +62,7 @@ typedef enum logic[7:0] {
 	m_sub,
 	m_syscall,
 	m_xor
-} micro_opcode_t opcode;
+} micro_opcode_t;
 
 typedef struct packed {
 	logic[63:0] rip_val;
