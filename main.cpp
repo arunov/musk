@@ -1,3 +1,5 @@
+#include <iostream>
+#include <string.h>
 #include "Vtop.h"
 #include "verilated.h"
 #include "system.h"
@@ -21,6 +23,29 @@ int main(int argc, char* argv[]) {
 	global_ram = (char *)sys.get_ram_address();
 	global_ramsize = 1*G;
 	global_ram_brkptr = sys.get_max_elf_addr();
+
+	// adding program arguments
+	uint64_t rsp_offset = 0x7C00;
+	uint64_t args_bump_ptr = 0x8000;
+	int i;
+	*(uint64_t *)(global_ram+rsp_offset) = argc-1;	/* argc */
+	rsp_offset += 8;
+	for (i=0; i<(argc-1); i++) {
+		strcpy(global_ram+args_bump_ptr, argv[i+1]);
+		*(uint64_t *)(global_ram+rsp_offset+i*8) = args_bump_ptr;	/* argv[i] */
+		args_bump_ptr += ((strlen(argv[i+1])+16)&(~7));
+	}
+	*(uint64_t *)(global_ram+rsp_offset+i*8) = 0;	/* last argument */
+
+	//cerr << "Printing all arguments..." << endl;
+	//for (int j=0; j<argc; j++) {
+	//	cerr << argv[j] << endl;
+	//}
+	cerr << "Printing all arguments of program..." << endl;
+	for (int j=0; j<argc-1; j++) {
+		cerr << hex << (char *)(*(uint64_t *)(global_ram+rsp_offset+j*8)+(uint64_t)global_ram) << endl;
+		// cerr << (char *)*((uint64_t *)(global_ram+rsp_offset) + j) << endl;
+	}
 
 	VerilatedVcdC* tfp = NULL;
 #if VM_TRACE			// If verilator was invoked with --trace

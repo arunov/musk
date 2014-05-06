@@ -242,7 +242,7 @@ long long syscall_cse502(long long rax, long long rdi, long long rsi, long long 
 		return global_ram_brkptr;
 	case __NR_clock_gettime:
 		*(uint64_t *)(global_ram+rsi) = main_time/ps_per_clock;
-		return 0;
+		return main_time/ps_per_clock;
 		// return __syscall2(rax, rdi, (uint64_t)(global_ram+rsi));
 	default:
 		assert(0);	// no other syscall is implemented.
