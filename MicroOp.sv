@@ -21,8 +21,12 @@ endfunction
 
 function automatic int crack_opd0_opd1_out_opd0_rflags(
 	input micro_opcode_t mopcode, 
+	/* verilator lint_off UNUSED */
 	input fat_instruction_t ins, 
+	/* verilator lint_on UNUSED */
+	/* verilator lint_off UNDRIVEN */
 	output micro_op_t[0:MAX_MOP_CNT-1] mops
+	/* verilator lint_on UNDRIVEN */
 );
 	if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_register) begin 
 		mops[0] = make_mop(mopcode, `R0, `R1, `R0); 
@@ -49,8 +53,12 @@ endfunction
 
 function automatic int crack_opd0_opd1_out_rflags(
 	input micro_opcode_t mopcode, 
+	/* verilator lint_off UNUSED */
 	input fat_instruction_t ins, 
+	/* verilator lint_on UNUSED */
+	/* verilator lint_off UNDRIVEN */
 	output micro_op_t[0:MAX_MOP_CNT-1] mops
+	/* verilator lint_on UNDRIVEN */
 );
 	if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_register) begin 
 		mops[0] = make_mop(mopcode, `R0, `R1, rflags); 
@@ -73,8 +81,12 @@ function automatic int crack_opd0_opd1_out_rflags(
 endfunction
 
 function automatic int crack_imul1(
-	input fat_instruction_t ins,
+	/* verilator lint_off UNUSED */
+	input fat_instruction_t ins, 
+	/* verilator lint_on UNUSED */
+	/* verilator lint_off UNDRIVEN */
 	output micro_op_t[0:MAX_MOP_CNT-1] mops
+	/* verilator lint_on UNDRIVEN */
 );
 	if (ins.operand0.opd_type == opdt_register) begin 
 		mops[0] = make_mop(m_imul_l, rax, `R0, rha);
@@ -96,18 +108,14 @@ function automatic int crack_imul1(
 	$finish;
 endfunction
 
-function automatic int crack_imul3(
-	input fat_instruction_t ins,
-	output micro_op_t[0:MAX_MOP_CNT-1] mops
-);
-	$display("ERROR: crack_imul3: 3-operand imul not supported yet"); 
-	$finish;
-endfunction
-
 function automatic int crack_jcc(
 	input micro_opcode_t mopcode, 
+	/* verilator lint_off UNUSED */
 	input fat_instruction_t ins, 
+	/* verilator lint_on UNUSED */
+	/* verilator lint_off UNDRIVEN */
 	output micro_op_t[0:MAX_MOP_CNT-1] mops
+	/* verilator lint_on UNDRIVEN */
 );
 	if (ins.operand0.opd_type == opdt_register && `R0 == rimm) begin // rip offset
 		mops[0] = make_mop(m_add, rip, rimm, rha);
@@ -130,7 +138,16 @@ endfunction
 
 
 /*** macros for entry points ***/
-`define MOPFUN(fun) function automatic int fun(fat_instruction_t ins, output micro_op_t[0:MAX_MOP_CNT-1] mops);
+`define MOPFUN(fun) \
+function automatic int ins_``fun( \
+	/* verilator lint_off UNUSED */ \
+	input fat_instruction_t ins, \
+	/* verilator lint_on UNUSED */ \
+	/* verilator lint_off UNDRIVEN */ \
+	output micro_op_t[0:MAX_MOP_CNT-1] mops \
+	/* verilator lint_on UNDRIVEN */ \
+);
+
 `define ENDMOPFUN   endfunction
 
 /*** begin of entry points ***/
@@ -193,7 +210,8 @@ endfunction
 		return crack_opd0_opd1_out_opd0_rflags(m_imul_l, ins, mops);
 	end else begin
 		// three operands
-		return crack_imul3(ins, mops);
+		$display("ERROR: imul: 3-operand imul not supported yet"); 
+		$finish;
 	end
 `ENDMOPFUN
 
@@ -335,16 +353,17 @@ endfunction
 /*** end of entry points ***/
 
 
-`define MOP(name) "name" : cnt = name(ins, mops);
+`define MOP(name) "name" : cnt = ins_``name(ins, mops);
 
 /** Return the number of micro ops generated. **/
 /** On error, program will be stopped, so no need for caller to handle error case. **/
 function automatic int gen_micro_ops(fat_instruction_t ins, output micro_op_t[0:MAX_MOP_CNT-1] mops);
 
 	int cnt = 0;
+	int i = 0;
 
 	mops = 0;
-	case (ins.opcode_struct_t.name) begin
+	case (ins.opcode_struct.name)
 		`MOP(nop)
 		`MOP(lea)
 		`MOP(syscall)
@@ -372,12 +391,11 @@ function automatic int gen_micro_ops(fat_instruction_t ins, output micro_op_t[0:
 		`MOP(callq)
 		`MOP(retq)
 		default : begin
-			$display("ERROR: instuction not supported: %s", ins.opcode_struct_t.name);
+			$display("ERROR: instuction not supported: %s", ins.opcode_struct.name);
 			$finish;
 		end
-	end
+	endcase
 
-	int i = 0;
 	for (i = 0; i < MAX_MOP_CNT; i++) begin
 		mops[i].rip_val = ins.rip_val;
 		mops[i].scale = ins.scale;
@@ -386,4 +404,6 @@ function automatic int gen_micro_ops(fat_instruction_t ins, output micro_op_t[0:
 	end
 
 	return cnt;
+endfunction
+
 endpackage

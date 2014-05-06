@@ -60,7 +60,7 @@ typedef enum logic[7:0] {
 	m_shl,   // (op0, op1, res) ; set flags
 	m_shr,   // (op0, op1, res) ; set flags
 	m_sub,   // (op0, op1, res) ; set flags
-	m_xor    // (op0, op1, res) ; set flags
+	m_xor,   // (op0, op1, res) ; set flags
 	m_imul_l,    // (op0, op1, res); lower half of multiplication ; set flags
 	m_imul_h,    // (op0, op1, res); higher half of multiplication ; set flags
 	M_JMIN,  // Just a marker
@@ -73,7 +73,7 @@ typedef enum logic[7:0] {
 	m_jne,   // (target, rflags, rnil)
 	m_jmp,   // (target, rnil, rnil) 
 	M_JMAX,  // Just a marker
-	m_syscall, // very special
+	m_syscall // very special
 } micro_opcode_t;
 
 typedef struct packed {
