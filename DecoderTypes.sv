@@ -40,38 +40,40 @@ typedef struct packed {
 } fat_instruction_t;
 
 /*** 
-The processing of a micro op will go through 4 stages: register read, execute, memory access, register write.
-To keep things (maybe) simple, 'execute' and 'memory access' should NOT make use of src and dst ids.
-Design micro ops according to this rule.
+The processing of a micro op will go through 4 stages: 
+register read, execute, memory access, register write.
+
+Currently, besides m_syscall, none of these micro ops need to check src or dst ids during 
+'execute' and 'memory access'. Should we make this a rule?
 
 All registers are prefixed with flag bits.
 ***/
 
 typedef enum logic[7:0] {
-	m_ld,
-	m_st,
-	m_add,
-	m_and,
-	m_cpy,
-	m_imul_l,
-	m_imul_h,
-	M_JMIN, // Just a marker
-	m_jnb,
-	m_jz,
-	m_jnle,
-	m_jnl,
-	m_jl,
-	m_jle,
-	m_jmp,
-	m_jne,
-	M_JMAX, // Just a marker
-	m_lea,
-	m_or,
-	m_shl,
-	m_shr,
-	m_sub,
-	m_syscall,
-	m_xor
+	m_lea,   // (base, index, res)
+	m_ld,    // (src_addr, rnil, dst)
+	m_st,    // (src, dst_addr, rnil)
+	m_cpy,   // (src, rnil, dest)
+	m_add,   // (op0, op1, res) ; set flags
+	m_and,   // (op0, op1, res) ; set flags
+	m_or,    // (op0, op1, res) ; set flags
+	m_shl,   // (op0, op1, res) ; set flags
+	m_shr,   // (op0, op1, res) ; set flags
+	m_sub,   // (op0, op1, res) ; set flags
+	m_xor    // (op0, op1, res) ; set flags
+	m_imul_l,    // (op0, op1, res); lower half of multiplication ; set flags
+	m_imul_h,    // (op0, op1, res); higher half of multiplication ; set flags
+	M_JMIN,  // Just a marker
+	m_jnb,   // (target, rflags, rnil)
+	m_jz,    // (target, rflags, rnil)
+	m_jnle,  // (target, rflags, rnil)
+	m_jnl,   // (target, rflags, rnil)
+	m_jl,    // (target, rflags, rnil)
+	m_jle,   // (target, rflags, rnil)
+	m_jne,   // (target, rflags, rnil)
+	m_jmp,   // (target, rnil, rnil) 
+	M_JMAX,  // Just a marker
+	m_syscall, // very special
 } micro_opcode_t;
 
 typedef struct packed {

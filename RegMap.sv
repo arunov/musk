@@ -29,9 +29,9 @@ typedef enum logic[7:0] {
 	r14,
 	r15,
 	rflags,
-	rh0,
-	rh1,
-	rh2
+	rha,
+	rhb,
+	rhc
 } reg_id_t;
 
 typedef logic[0:8*8-1] reg_name_t;
@@ -71,9 +71,9 @@ function automatic reg_name_t reg_id2name(reg_id_t id);
 	map[r14] = "%r14";
 	map[r15] = "%r15";
 	map[rflags] = "%rflags";
-	map[rh0] = "%rh0";
-	map[rh1] = "%rh1";
-	map[rh2] = "%rh2";
+	map[rha] = "%rha";
+	map[rhb] = "%rhb";
+	map[rhc] = "%rhc";
 
 	if (map[id] == 0) $display("ERROR: no mapping for reg_id2name %x: ", id);
 
@@ -108,9 +108,9 @@ function automatic reg_id_t reg_name2id(reg_name_t name);
 		"%r14": return r14;
 		"%r15": return r15;
 		"%rflags": return rflags;
-		"%rh0": return rh0;
-		"%rh1": return rh1;
-		"%rh2": return rh2;
+		"%rha": return rha;
+		"%rhb": return rhb;
+		"%rhc": return rhc;
 		default : begin
 			$display("ERROR: no mapping for reg_name2id %s: ", name);
 			return rax;

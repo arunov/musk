@@ -3,7 +3,12 @@ package MicroOp;
 import DecoderTypes::*;
 import RegMap::*;
 
-parameter MAX_MOP_CNT = 8;
+parameter MAX_MOP_CNT = 6;
+
+`define R0  (ins.operand0.base_reg)
+`define RX0 (ins.operand0.index_reg)
+`define R1  (ins.operand1.base_reg)
+`define RX1 (ins.operand1.index_reg)
 
 function automatic micro_op_t make_mop(micro_opcode_t opc, reg_id_t src0, reg_id_t src1, reg_id_t dst);
 	micro_op_t mop = 0;
@@ -14,159 +19,317 @@ function automatic micro_op_t make_mop(micro_opcode_t opc, reg_id_t src0, reg_id
 	return mop;
 endfunction
 
-function automatic int crack_opd0_opd1_out_opd0_rflags(micro_opcode_t mopcode, fat_instruction_t ins, int idx, output micro_op_t[0:MAX_MOP_CNT-1] mops);
+function automatic int crack_opd0_opd1_out_opd0_rflags(
+	input micro_opcode_t mopcode, 
+	input fat_instruction_t ins, 
+	output micro_op_t[0:MAX_MOP_CNT-1] mops
+);
 	if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_register) begin 
-		mops[idx] = make_mop(mopcode, ins.operand0.base_reg, ins.operand1.base_reg, ins.operand0.base_reg); 
-		mops[idx+1] = make_mop(m_cpy, ins.operand0.base_reg, rnil, rflags); 
+		mops[0] = make_mop(mopcode, `R0, `R1, `R0); 
+		mops[1] = make_mop(m_cpy, `R0, rnil, rflags); 
 		return 2;
-	end else if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_memory) begin 
-		mops[idx] = make_mop(m_lea, ins.operand1.base_reg, ins.operand1.index_reg, rh0);
-		mops[idx+1] = make_mop(m_ld, rh0, rnil, rh1);
-		mops[idx+2] = make_mop(mopcode, ins.operand0.base_reg, rh1, ins.operand0.base_reg); 
-		mops[idx+3] = make_mop(m_cpy, ins.operand0.base_reg, rnil, rflags); 
-		return 4;
-	end else if (ins.operand0.opd_type == opdt_memory && ins.operand1.opd_type == opdt_register) begin 
-		mops[idx] = make_mop(m_lea, ins.operand0.base_reg, ins.operand0.index_reg, rh0);
-		mops[idx+1] = make_mop(m_ld, rh0, rnil, rh1);
-		mops[idx+2] = make_mop(mopcode, rh1, ins.operand1.base_reg, rh1); 
-		mops[idx+3] = make_mop(m_cpy, rh1, rnil, rflags); 
-		mops[idx+4] = make_mop(m_st, rh0, rh1, rnil); 
-		return 5;
-	end else begin 
-		$display("ERROR: crack_opd0_opd1_out_opd0_rflags: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
-		return -1;
 	end
+	if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_memory) begin 
+		mops[0] = make_mop(m_lea, `R1, `RX1, rha);
+		mops[1] = make_mop(m_ld, rha, rnil, rha);
+		mops[2] = make_mop(mopcode, `R0, rha, `R0); 
+		mops[3] = make_mop(m_cpy, `R0, rnil, rflags); 
+		return 4;
+	end
+	if (ins.operand0.opd_type == opdt_memory && ins.operand1.opd_type == opdt_register) begin 
+		mops[0] = make_mop(m_lea, `R0, `RX0, rha);
+		mops[1] = make_mop(m_ld, rha, rnil, rhb);
+		mops[2] = make_mop(mopcode, rhb, `R1, rflags); 
+		mops[3] = make_mop(m_st, rflags, rha, rnil);
+		return 4;
+	end 
+	$display("ERROR: crack_opd0_opd1_out_opd0_rflags: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
+	$finish;
 endfunction
 
-function automatic int crack_opd0_opd1_out_x(micro_opcode_t mopcode, fat_instruction_t ins, reg_id_t x_reg);
-	int cnt = 0;
+function automatic int crack_opd0_opd1_out_rflags(
+	input micro_opcode_t mopcode, 
+	input fat_instruction_t ins, 
+	output micro_op_t[0:MAX_MOP_CNT-1] mops
+);
 	if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_register) begin 
-		mops[0] = make_mop(mopcode, ins.operand0.base_reg, ins.operand1.base_reg, x_reg); 
+		mops[0] = make_mop(mopcode, `R0, `R1, rflags); 
 		return 1;
-	end else if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_memory) begin 
-		mops[0] = make_mop(m_lea, ins.operand1.base_reg, ins.operand1.index_reg, rh0);
-		mops[1] = make_mop(m_ld, rh0, rnil, rh1);
-		mops[2] = make_mop(mopcode, ins.operand0.base_reg, rh1, x_reg); 
-		return 3;
-	end else if (ins.operand0.opd_type == opdt_memory && ins.operand1.opd_type == opdt_register) begin 
-		mops[0] = make_mop(m_lea, ins.operand0.base_reg, ins.operand0.index_reg, rh0);
-		mops[1] = make_mop(m_ld, rh0, rnil, rh1);
-		mops[2] = make_mop(mopcode, rh1, ins.operand1.base_reg, x_reg); 
-		return 3;
-	end else begin 
-		$display("ERROR: crack_opd0_opd1_out_x: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
-		return -1;
 	end
+	if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_memory) begin 
+		mops[0] = make_mop(m_lea, `R1, `RX1, rha);
+		mops[1] = make_mop(m_ld, rha, rnil, rha);
+		mops[2] = make_mop(mopcode, `R0, rha, rflags); 
+		return 3;
+	end
+	if (ins.operand0.opd_type == opdt_memory && ins.operand1.opd_type == opdt_register) begin 
+		mops[0] = make_mop(m_lea, `R0, `RX0, rha);
+		mops[1] = make_mop(m_ld, rha, rnil, rha);
+		mops[2] = make_mop(mopcode, rha, `R1, rflags); 
+		return 3;
+	end 
+	$display("ERROR: crack_opd0_opd1_out_flags: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
+	$finish;
 endfunction
+
+function automatic int crack_imul1(
+	input fat_instruction_t ins,
+	output micro_op_t[0:MAX_MOP_CNT-1] mops
+);
+	if (ins.operand0.opd_type == opdt_register) begin 
+		mops[0] = make_mop(m_imul_l, rax, `R0, rha);
+		mops[1] = make_mop(m_imul_h, rax, `R0, rdx);
+		mops[2] = make_mop(m_cpy, rha, rnil, rax);
+		mops[3] = make_mop(m_cpy, rdx, rnil, rflags);
+		return 4;
+	end
+	if (ins.operand0.opd_type == opdt_memory) begin 
+		mops[0] = make_mop(m_lea, `R0, `RX0, rha);
+		mops[1] = make_mop(m_ld, rha, rnil, rha);
+		mops[2] = make_mop(m_imul_l, rax, rha, rhb);
+		mops[3] = make_mop(m_imul_h, rax, rha, rdx);
+		mops[4] = make_mop(m_cpy, rhb, rnil, rax);
+		mops[5] = make_mop(m_cpy, rdx, rnil, rflags);
+		return 6;
+	end
+	$display("ERROR: crack_imul1: invalid operand type: %x", ins.operand0.opd_type); 
+	$finish;
+endfunction
+
+function automatic int crack_imul3(
+	input fat_instruction_t ins,
+	output micro_op_t[0:MAX_MOP_CNT-1] mops
+);
+	$display("ERROR: crack_imul3: 3-operand imul not supported yet"); 
+	$finish;
+endfunction
+
+function automatic int crack_jcc(
+	input micro_opcode_t mopcode, 
+	input fat_instruction_t ins, 
+	output micro_op_t[0:MAX_MOP_CNT-1] mops
+);
+	if (ins.operand0.opd_type == opdt_register && `R0 == rimm) begin // rip offset
+		mops[0] = make_mop(m_add, rip, rimm, rha);
+		mops[1] = make_mop(mopcode, rha, rflags, rnil);
+		return 2;
+	end
+	if (ins.operand0.opd_type == opdt_register) begin
+		mops[0] = make_mop(mopcode, `R0, rflags, rnil);
+		return 1;
+	end
+	if (ins.operand0.opd_type == opdt_memory) begin
+		mops[0] = make_mop(m_lea, `R0, `RX0, rha);
+		mops[1] = make_mop(m_ld, rha, rnil, rha);
+		mops[2] = make_mop(mopcode, rha, rflags, rnil);
+		return 3;
+	end
+	$display("ERROR: crack_jcc: invalid operand type: %x", ins.operand0.opd_type); 
+	$finish;
+endfunction
+
 
 /*** macros for entry points ***/
 `define MOPFUN(fun) function automatic int fun(fat_instruction_t ins, output micro_op_t[0:MAX_MOP_CNT-1] mops);
 `define ENDMOPFUN   endfunction
 
 /*** begin of entry points ***/
-`MOPFUN(add)
-	return crack_opd0_opd1_out_opd0_rflags(m_add, ins);
-`ENDMOPFUN
-
-`MOPFUN(and)
-	return crack_opd0_opd1_out_opd0_rflags(m_and, ins);
-`ENDMOPFUN
-
-`MOPFUN(callq)
-`ENDMOPFUN
-
-`MOPFUN(cmp)
-	return crack_opd0_opd1_out_x(m_sub, ins, rflags);
-`ENDMOPFUN
-
-`MOPFUN(imul)
-	if (ins.opcode_struct.opcode == 24'hF7) begin // one operand
-		`crack_opd0_out_x(m_imul, mf_rax_r0_out_rax_rdx_rflags)
-	end else if (ins.opcode_struct.opcode == 24'h0FAF) begin // two operands
-		return crack_opd0_opd1_out_opd0_rflags(m_imul_l, ins);
-	end else begin // three operands
-		
-	end
-`ENDMOPFUN
-
-`MOPFUN(jnb)
-	`crack_opd0_out_x(m_jnb, mf_r0_out_x)
-`ENDMOPFUN
-
-`MOPFUN(jz)
-	`crack_opd0_out_x(m_jz, mf_r0_out_x)
-`ENDMOPFUN
-
-`MOPFUN(jnle)
-	`crack_opd0_out_x(m_jnle, mf_r0_out_x)
-`ENDMOPFUN
-
-`MOPFUN(jnl)
-	`crack_opd0_out_x(m_jnl, mf_r0_out_x)
-`ENDMOPFUN
-
-`MOPFUN(jl)
-	`crack_opd0_out_x(m_jl, mf_r0_out_x)
-`ENDMOPFUN
-
-`MOPFUN(jle)
-	`crack_opd0_out_x(m_jle, mf_r0_out_x)
-`ENDMOPFUN
-
-`MOPFUN(jmp)
-	`crack_opd0_out_x(m_jmp, mf_r0_out_x)
-`ENDMOPFUN
-
-`MOPFUN(jne)
-	`crack_opd0_out_x(m_jne, mf_r0_out_x)
-`ENDMOPFUN
-
-`MOPFUN(lea)
-	mops[0] = make_mop(m_lea, ins.operand1.base_reg, ins.operand1.index_reg, ins.operand0.base_reg);
-	return 1;
-`ENDMOPFUN
-
-`MOPFUN(mov)
-`ENDMOPFUN
-
 `MOPFUN(nop)
 	return 0;
 `ENDMOPFUN
 
-`MOPFUN(or)
-	return crack_opd0_opd1_out_opd0_rflags(m_or, ins);
-`ENDMOPFUN
-
-`MOPFUN(pop)
-`ENDMOPFUN
-
-`MOPFUN(push)
-`ENDMOPFUN
-
-`MOPFUN(retq)
-`ENDMOPFUN
-
-`MOPFUN(shl)
-	return crack_opd0_opd1_out_opd0_rflags(m_shl, ins);
-`ENDMOPFUN
-
-`MOPFUN(shr)
-	return crack_opd0_opd1_out_opd0_rflags(m_shr, ins);
-`ENDMOPFUN
-
-`MOPFUN(sub)
-	return crack_opd0_opd1_out_opd0_rflags(m_sub, ins);
+`MOPFUN(lea)
+	mops[0] = make_mop(m_lea, `R1, `RX1, `R0);
+	return 1;
 `ENDMOPFUN
 
 `MOPFUN(syscall)
+	mops[0] = make_mop(m_syscall, rnil, rnil, rnil);
+	return 1;
 `ENDMOPFUN
 
-`MOPFUN(test)
-	return crack_opd0_opd1_out_x(m_and, rflags);
+`MOPFUN(add)
+	return crack_opd0_opd1_out_opd0_rflags(m_add, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(and)
+	return crack_opd0_opd1_out_opd0_rflags(m_and, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(or)
+	return crack_opd0_opd1_out_opd0_rflags(m_or, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(shl)
+	return crack_opd0_opd1_out_opd0_rflags(m_shl, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(shr)
+	return crack_opd0_opd1_out_opd0_rflags(m_shr, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(sub)
+	return crack_opd0_opd1_out_opd0_rflags(m_sub, ins, mops);
 `ENDMOPFUN
 
 `MOPFUN(xor)
-	return crack_opd0_opd1_out_opd0_rflags(m_xor, ins);
+	return crack_opd0_opd1_out_opd0_rflags(m_xor, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(cmp)
+	return crack_opd0_opd1_out_rflags(m_sub, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(test)
+	return crack_opd0_opd1_out_rflags(m_and, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(imul)
+	if (ins.opcode_struct.opcode == 24'hF7) begin
+		// one operand
+		return crack_imul1(ins, mops);
+	end else if (ins.opcode_struct.opcode == 24'h0FAF) begin
+		// two operands
+		return crack_opd0_opd1_out_opd0_rflags(m_imul_l, ins, mops);
+	end else begin
+		// three operands
+		return crack_imul3(ins, mops);
+	end
+`ENDMOPFUN
+
+`MOPFUN(jnb)
+	return crack_jcc(m_jnb, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(jz)
+	return crack_jcc(m_jz, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(jnle)
+	return crack_jcc(m_jnle, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(jnl)
+	return crack_jcc(m_jnl, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(jl)
+	return crack_jcc(m_jl, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(jle)
+	return crack_jcc(m_jle, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(jne)
+	return crack_jcc(m_jne, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(jmp)
+	if (ins.operand0.opd_type == opdt_register && `R0 == rimm) begin // rip offset
+		mops[0] = make_mop(m_add, rip, rimm, rha);
+		mops[1] = make_mop(m_jmp, rha, rnil, rnil);
+		return 2;
+	end
+	if (ins.operand0.opd_type == opdt_register) begin
+		mops[0] = make_mop(m_jmp, `R0, rnil, rnil);
+		return 1;
+	end
+	if (ins.operand0.opd_type == opdt_memory) begin
+		mops[0] = make_mop(m_lea, `R0, `RX0, rha);
+		mops[1] = make_mop(m_ld, rha, rnil, rha);
+		mops[2] = make_mop(m_jmp, rha, rnil, rnil);
+		return 3;
+	end
+	$display("ERROR: jmp: invalid operand type: %x", ins.operand0.opd_type); 
+	$finish;
+`ENDMOPFUN
+
+`MOPFUN(mov)
+	if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_register) begin 
+		mops[0] = make_mop(m_cpy, `R1, rnil, `R0); 
+		return 1;
+	end
+	if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_memory) begin 
+		mops[0] = make_mop(m_lea, `R1, `RX1, rha);
+		mops[1] = make_mop(m_ld, rha, rnil, `R0);
+		return 2;
+	end
+	if (ins.operand0.opd_type == opdt_memory && ins.operand1.opd_type == opdt_register) begin 
+		mops[0] = make_mop(m_lea, `R0, `RX0, rha);
+		mops[1] = make_mop(m_st, `R1, rha, rnil);
+		return 2;
+	end 
+	$display("ERROR: mov: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
+	$finish;
+`ENDMOPFUN
+
+`MOPFUN(pop)
+	// See manual for when to change %rsp, this matters because %rsp can be the destination of pop.
+	if (ins.operand0.opd_type == opdt_register) begin
+		mops[0] = make_mop(m_ld, rsp, rnil, `R0);
+		mops[1] = make_mop(m_add, rsp, rv8, rsp);
+		return 2;
+	end
+	if (ins.operand0.opd_type == opdt_memory) begin
+		mops[0] = make_mop(m_ld, rsp, rnil, rha);
+		mops[1] = make_mop(m_lea, `R0, `RX0, rhb);
+		mops[2] = make_mop(m_st, rha, rhb, rnil);
+		mops[3] = make_mop(m_add, rsp, rv8, rsp);
+		return 4;
+	end
+	$display("ERROR: pop: invalid operand type: %x", ins.operand0.opd_type); 
+	$finish;
+`ENDMOPFUN
+
+`MOPFUN(push)
+	// See manual for when to change %rsp, this matters because %rsp can be pushed onto the stack.
+	mops[0] = make_mop(m_sub, rsp, rv8, rsp);
+	if (ins.operand0.opd_type == opdt_register) begin
+		mops[1] = make_mop(m_st, `R0, rsp, rnil);
+		return 2;
+	end
+	if (ins.operand0.opd_type == opdt_memory) begin
+		mops[1] = make_mop(m_lea, `R0, `RX0, rha);
+		mops[2] = make_mop(m_ld, rha, rnil, rha);
+		mops[3] = make_mop(m_st, rha, rsp, rnil);
+		return 4;
+	end
+	$display("ERROR: push: invalid operand type: %x", ins.operand0.opd_type); 
+	$finish;
+`ENDMOPFUN
+
+`MOPFUN(callq)
+	// push rip
+	mops[0] = make_mop(m_sub, rsp, rv8, rsp);
+	mops[1] = make_mop(m_st, rip, rsp, rnil);
+	// jmp
+	if (ins.operand0.opd_type == opdt_register && `R0 == rimm) begin // rip offset
+		mops[2] = make_mop(m_add, rip, rimm, rha);
+		mops[3] = make_mop(m_jmp, rha, rnil, rnil);
+		return 4;
+	end
+	if (ins.operand0.opd_type == opdt_register) begin
+		mops[2] = make_mop(m_jmp, `R0, rnil, rnil);
+		return 3;
+	end
+	if (ins.operand0.opd_type == opdt_memory) begin
+		mops[2] = make_mop(m_lea, `R0, `RX0, rha);
+		mops[3] = make_mop(m_ld, rha, rnil, rha);
+		mops[4] = make_mop(m_jmp, rha, rnil, rnil);
+		return 5;
+	end
+	$display("ERROR: callq: invalid operand type: %x", ins.operand0.opd_type); 
+	$finish;
+`ENDMOPFUN
+
+`MOPFUN(retq)
+	// pop rip to rha
+	mops[0] = make_mop(m_ld, rsp, rnil, rha);
+	mops[1] = make_mop(m_add, rsp, rv8, rsp);
+	// jmp
+	mops[2] = make_mop(m_jmp, rha, rnil, rnil);
+	return 3;
 `ENDMOPFUN
 
 /*** end of entry points ***/
@@ -174,17 +337,26 @@ endfunction
 
 `define MOP(name) "name" : cnt = name(ins, mops);
 
-/** Return the number of micro ops generated, or -1 for error. **/
+/** Return the number of micro ops generated. **/
+/** On error, program will be stopped, so no need for caller to handle error case. **/
 function automatic int gen_micro_ops(fat_instruction_t ins, output micro_op_t[0:MAX_MOP_CNT-1] mops);
 
 	int cnt = 0;
 
 	mops = 0;
 	case (ins.opcode_struct_t.name) begin
+		`MOP(nop)
+		`MOP(lea)
+		`MOP(syscall)
 		`MOP(add)
 		`MOP(and)
-		`MOP(callq)
+		`MOP(or)
+		`MOP(shl)
+		`MOP(shr)
+		`MOP(sub)
+		`MOP(xor)
 		`MOP(cmp)
+		`MOP(test)
 		`MOP(imul)
 		`MOP(jnb)
 		`MOP(jz)
@@ -192,24 +364,16 @@ function automatic int gen_micro_ops(fat_instruction_t ins, output micro_op_t[0:
 		`MOP(jnl)
 		`MOP(jl)
 		`MOP(jle)
-		`MOP(jmp)
 		`MOP(jne)
-		`MOP(lea)
+		`MOP(jmp)
 		`MOP(mov)
-		`MOP(nop)
-		`MOP(or)
 		`MOP(pop)
 		`MOP(push)
+		`MOP(callq)
 		`MOP(retq)
-		`MOP(shl)
-		`MOP(shr)
-		`MOP(sub)
-		`MOP(syscall)
-		`MOP(test)
-		`MOP(xor)
 		default : begin
 			$display("ERROR: instuction not supported: %s", ins.opcode_struct_t.name);
-			return -1;
+			$finish;
 		end
 	end
 
