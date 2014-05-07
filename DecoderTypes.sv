@@ -54,6 +54,7 @@ typedef enum logic[7:0] {
 	m_ld,    // (src_addr, rnil, dst)
 	m_st,    // (src, dst_addr, rnil)
 	m_cpy,   // (src, rnil, dest)
+	m_cpy_f, // (src0, src1, dest) ; combine the value of src0 and flags of src1 into dest
 	m_add,   // (op0, op1, res) ; set flags
 	m_and,   // (op0, op1, res) ; set flags
 	m_or,    // (op0, op1, res) ; set flags
@@ -81,9 +82,9 @@ typedef struct packed {
 	reg_id_t src0_id;
 	reg_id_t src1_id;
 	reg_id_t dst_id;
-	logic[63:0] src0_val;
-	logic[63:0] src1_val;
-	logic[63:0] dst_val;
+	reg_val_t src0_val;
+	reg_val_t src1_val;
+	reg_val_t dst_val;
 	logic[1:0] scale;
 	logic[63:0] disp;
 	logic[63:0] immediate;

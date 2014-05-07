@@ -34,6 +34,16 @@ typedef enum logic[7:0] {
 	rhc
 } reg_id_t;
 
+typedef struct packed {
+	logic cf;
+	logic zf;
+	logic sf;
+	logic of;
+	logic pf;
+	logic af;
+	logic [63:0] val;
+} reg_val_t;
+
 typedef logic[0:8*8-1] reg_name_t;
 
 function automatic logic[7:0] reg_num(reg_id_t id);

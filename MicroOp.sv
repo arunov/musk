@@ -5,10 +5,18 @@ import RegMap::*;
 
 parameter MAX_MOP_CNT = 6;
 
-`define R0  (ins.operand0.base_reg)
-`define RX0 (ins.operand0.index_reg)
-`define R1  (ins.operand1.base_reg)
-`define RX1 (ins.operand1.index_reg)
+function automatic reg_id_t patch_base(/* verilator lint_off UNUSED */ operand_t opd /* verilator lint_on UNUSED */);
+	return opd.base_reg == rnil ? rv0 : opd.base_reg;
+endfunction
+
+function automatic reg_id_t patch_index(/* verilator lint_off UNUSED */ operand_t opd /* verilator lint_on UNUSED */);
+	return opd.index_reg == rnil ? rv0 : opd.index_reg;
+endfunction
+
+`define R0  (patch_base(ins.operand0))
+`define RX0 (patch_index(ins.operand0))
+`define R1  (patch_base(ins.operand1))
+`define RX1 (patch_index(ins.operand1))
 
 function automatic micro_op_t make_mop(micro_opcode_t opc, reg_id_t src0, reg_id_t src1, reg_id_t dst);
 	micro_op_t mop = 0;
@@ -48,6 +56,41 @@ function automatic int crack_opd0_opd1_out_opd0_rflags(
 		return 4;
 	end 
 	$display("ERROR: crack_opd0_opd1_out_opd0_rflags: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
+	$finish;
+endfunction
+
+function automatic int crack_opd0_opd1_out_opd0_maybe_rflags(
+	input micro_opcode_t mopcode, 
+	/* verilator lint_off UNUSED */
+	input fat_instruction_t ins, 
+	/* verilator lint_on UNUSED */
+	/* verilator lint_off UNDRIVEN */
+	output micro_op_t[0:MAX_MOP_CNT-1] mops
+	/* verilator lint_on UNDRIVEN */
+);
+	if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_register) begin 
+		mops[0] = make_mop(m_cpy_f, `R0, rflags, `R0); 
+		mops[1] = make_mop(mopcode, `R0, `R1, `R0); 
+		mops[2] = make_mop(m_cpy, `R0, rnil, rflags); 
+		return 3;
+	end
+	if (ins.operand0.opd_type == opdt_register && ins.operand1.opd_type == opdt_memory) begin 
+		mops[0] = make_mop(m_lea, `R1, `RX1, rha);
+		mops[1] = make_mop(m_ld, rha, rnil, rha);
+		mops[2] = make_mop(m_cpy_f, `R0, rflags, `R0); 
+		mops[3] = make_mop(mopcode, `R0, rha, `R0); 
+		mops[4] = make_mop(m_cpy, `R0, rnil, rflags); 
+		return 5;
+	end
+	if (ins.operand0.opd_type == opdt_memory && ins.operand1.opd_type == opdt_register) begin 
+		mops[0] = make_mop(m_lea, `R0, `RX0, rha);
+		mops[1] = make_mop(m_ld, rha, rnil, rhb);
+		mops[2] = make_mop(m_cpy_f, rhb, rflags, rhb); 
+		mops[3] = make_mop(mopcode, rhb, `R1, rflags); 
+		mops[4] = make_mop(m_st, rflags, rha, rnil);
+		return 5;
+	end 
+	$display("ERROR: crack_opd0_opd1_out_opd0_maybe_rflags: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
 	$finish;
 endfunction
 
@@ -177,20 +220,20 @@ function automatic int ins_``fun( \
 	return crack_opd0_opd1_out_opd0_rflags(m_or, ins, mops);
 `ENDMOPFUN
 
-`MOPFUN(shl)
-	return crack_opd0_opd1_out_opd0_rflags(m_shl, ins, mops);
-`ENDMOPFUN
-
-`MOPFUN(shr)
-	return crack_opd0_opd1_out_opd0_rflags(m_shr, ins, mops);
-`ENDMOPFUN
-
 `MOPFUN(sub)
 	return crack_opd0_opd1_out_opd0_rflags(m_sub, ins, mops);
 `ENDMOPFUN
 
 `MOPFUN(xor)
 	return crack_opd0_opd1_out_opd0_rflags(m_xor, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(shl)
+	return crack_opd0_opd1_out_opd0_maybe_rflags(m_shl, ins, mops);
+`ENDMOPFUN
+
+`MOPFUN(shr)
+	return crack_opd0_opd1_out_opd0_maybe_rflags(m_shr, ins, mops);
 `ENDMOPFUN
 
 `MOPFUN(cmp)

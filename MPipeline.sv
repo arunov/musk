@@ -1,0 +1,5 @@
+
+module MPipeline(
+);
+
+endmodule
