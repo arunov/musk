@@ -48,8 +48,8 @@ uint64_t System::load_elf(const char* filename) {
 			memset(ram+p->p_vaddr,0,p->p_memsz);
 			assert(lseek(fd,p->p_offset,SEEK_SET)!=-1);
 			assert(read(fd,(void*)(ram+p->p_vaddr),p->p_filesz)==p->p_filesz);
-			if (max_elf_addr < ((uint64_t)(ram+p->p_vaddr)+p->p_filesz)) {
-				max_elf_addr = ((uint64_t)(ram+p->p_vaddr)+p->p_filesz);
+			if (max_elf_addr < (p->p_vaddr+p->p_filesz)) {
+				max_elf_addr = (p->p_vaddr+p->p_filesz);
 			}
 			//cerr << "section flags " << hex << p->p_flags << endl;
 		} else if (p->p_type == PT_GNU_STACK) {
