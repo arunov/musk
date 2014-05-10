@@ -1,2 +1,6 @@
 obj_dir/
 trace.vcd
+diffout
+newout/
+oldout/
+
