@@ -1,4 +1,6 @@
 
+import DecoderTypes::*;
+import Decoder::decode;
 
 module MuskCore (
 	input[63:0] entry,
@@ -11,71 +13,60 @@ module MuskCore (
 	/* verilator lint_on UNDRIVEN */
 );
 
-	import DecoderTypes::fat_instruction_t;
-	import Decoder::decode;
-	import ALU::alu;
-
-	parameter DECBUF_SIZE=4*64;
-
-	logic[0:DECBUF_SIZE*8-1] decode_buffer_ff;
-	logic[63:0] fetch_addr_ff;
-	int decode_offset_ff, decode_buf_head_ff, decode_buf_tail_ff, bytes_decoded_this_cycle, decode_return;
+	logic[63:0] fetch_addr_ff, rip_ff;
+	int bytes_decoded_this_cycle, decode_return;
 
 	logic rd_reqcyc_ff, rd_respcyc;
 	logic [0:64*8-1] rd_data;
+
+	logic fq_en, fq_de;
+	logic [0:64*8-1] fq_in_data;
+	logic [0:64*15-1] fq_out_data;
+	int fq_in_cnt, fq_out_cnt, fq_used_cnt, fq_empty_cnt;
+
+/*** FETCH ***/
+
 	//MuskbusReader reader(reset, clk, bus, rd_reqcyc_ff, fetch_addr_ff, rd_respcyc, rd_data);
 	SetAssocReadCache reader(reset, clk, bus, rd_reqcyc_ff, fetch_addr_ff, rd_respcyc, rd_data);
-
-/*
-	always_comb begin
-		$display("fetch_addr_ff = %x", fetch_addr_ff);
-		$display("decode_offset_ff = %x", decode_offset_ff);
-		$display("decode_buf_head_ff = %x", decode_buf_head_ff);
-		$display("decode_buf_tail_ff = %x", decode_buf_tail_ff);
-	end
-*/
+	Queue fetch_queue#(64*8, 15*8, 64*8*4)(reset, clk, fq_en, fq_in_cnt, fq_in_data, fq_de, fq_out_cnt, fq_out_data, fq_used_cnt, fq_empty_cnt);
 
 	always_ff @ (posedge clk) begin
 		if (reset) begin
 			fetch_addr_ff <= entry & ~63;
-			decode_offset_ff <= { 26'b0, entry[5:0] }; 
-			decode_buf_head_ff <= 0;
-			decode_buf_tail_ff <= 0;
 			rd_reqcyc_ff <= 0;
+			rip_ff <= entry & ~63;
 		end else begin
-
-			if (decode_offset_ff + bytes_decoded_this_cycle - decode_buf_head_ff >= 64) begin
-				decode_buf_head_ff <= (decode_buf_head_ff + 64) % DECBUF_SIZE;
-			end
-
-			decode_offset_ff <= (decode_offset_ff + bytes_decoded_this_cycle) % DECBUF_SIZE;
-
 			if (rd_respcyc) begin
-				decode_buffer_ff[decode_buf_tail_ff*8 +: 64*8] <= rd_data;
-				decode_buf_tail_ff <= (decode_buf_tail_ff + 64) % DECBUF_SIZE;
 				fetch_addr_ff <= fetch_addr_ff + 64;
 			end
 
 			if (rd_respcyc) begin
-				rd_reqcyc_ff <= (decode_buf_tail_ff + 64 + 64) % DECBUF_SIZE != decode_buf_head_ff;
+				rd_reqcyc_ff <= fq_empty_cnt >= 128 * 8;
 			end else begin
-				rd_reqcyc_ff <= (decode_buf_tail_ff + 64) % DECBUF_SIZE != decode_buf_head_ff;
+				rd_reqcyc_ff <= fq_empty_cnt >= 64 * 8;
 			end
+
+			rip_ff <= rip_ff + bytes_decoded_this_cycle;
 		end
 	end
 
-	logic [0:(DECBUF_SIZE+15)*8-1] decode_buf_repeated;
+	always_comb begin
+		fq_en = rd_respcyc;
+		fq_in_cnt = 64 * 8 - (fetch_addr_ff[5:0] * 8);
+		fq_in_data = rd_data << (fetch_addr_ff[5:0] * 8);
+	end
+
 	logic [0:15*8-1] decode_bytes;
 	logic can_decode;
 
-	assign decode_buf_repeated = { decode_buffer_ff, decode_buffer_ff[0:15*8-1] };
-	assign decode_bytes = decode_buf_repeated[decode_offset_ff*8 +: 15*8];
-
-	always_comb begin : can_decode_block
-		int new_offset = decode_offset_ff + 15;
-		int real_tail = (decode_buf_head_ff <= decode_buf_tail_ff) ? decode_buf_tail_ff : (DECBUF_SIZE + decode_buf_tail_ff);
-		can_decode = new_offset <= real_tail;
+	always_comb begin
+		fq_de = bytes_decoded_this_cycle > 0;
+		fq_out_cnt = bytes_decoded_this_cycle * 8;
+		decode_bytes = fq_out_data;
+		can_decode = fq_empty_cnt >= 15 * 8;
 	end
+
+/*** DECODE ***/
 
 	logic can_exec_ff;
 
