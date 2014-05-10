@@ -1,455 +1,422 @@
-
 `include "MacroUtils.sv"
 `include "PrintMacros.sv"
 
 package OperandDecoder;
 
 import DecoderTypes::*;
+import RegMap::*;
 
-typedef logic[0:4*8-1] reg_name_t;
+/*** start of simple functions ***/
 
-function automatic reg_name_t[0:15] get_register_name_map();
-    reg_name_t[0:15] map = 0;
-	map[0] = "%rax";
-	map[1] = "%rcx";
-	map[2] = "%rdx";
-	map[3] = "%rbx";
-	map[4] = "%rsp";
-	map[5] = "%rbp";
-	map[6] = "%rsi";
-	map[7] = "%rdi";
-	map[8] = "%r8";
-	map[9] = "%r9";
-	map[10] = "%r10";
-	map[11] = "%r11";
-	map[12] = "%r12";
-	map[13] = "%r13";
-	map[14] = "%r14";
-	map[15] = "%r15";
-    return map;
+parameter REX_W = 3, REX_R = 2, REX_X = 1, REX_B = 0;
+
+function automatic reg_id_t reg_id(logic[3:0] code);
+	return {4'b1000, code};
 endfunction
 
-function automatic reg_name_t general_register_names(logic[3:0] index);
-	reg_name_t[0:15] map = get_register_name_map();
-	return map[index];
+function automatic void fillFixedReg(
+	/* verilator lint_off UNUSED */
+	/* verilator lint_off UNDRIVEN */
+	output operand_t operand,
+	/* verilator lint_on UNDRIVEN */
+	input logic[7:0] rex,
+	input reg_id_t r0,
+	input reg_id_t r1
+	/* verilator lint_on UNUSED */
+);
+	operand.opd_type = opdt_register;
+	operand.base_reg = rex[REX_R] == 0 ? r0 : r1;
 endfunction
 
-/* Returns id corresponding to the given register name */
-function automatic logic[3:0] get_reg_id(reg_name_t regname);
-    reg_name_t[0:15] map = get_register_name_map();
-    logic[4:0] i;
-    for(i = 0; i <= 15; i++)
-        if(map[i[3:0]] == regname)
-            return i[3:0];
-    $display("ERROR: Register mapping for %s not found", regname);
-    //TODO: return what? ERR?
+function automatic int operand_size( /* verilator lint_off UNUSED */ fat_instruction_t ins /* verilator lint_on UNUSED */);
+	if (ins.rex_prefix[REX_W]) begin
+		return 64;
+	end else begin
+		return ins.operand_size_prefix != 0 ? 16 : 32;
+	end
 endfunction
 
-typedef logic[15:0] DFUN_RET_TYPE; 
+function automatic int crackSIB(
+	/* verilator lint_off UNUSED */
+	/* verilator lint_off UNDRIVEN */
+	output operand_t operand,
+	/* verilator lint_on UNDRIVEN */
+	inout fat_instruction_t ins,
+	input logic[7:0] modrm,
+	input logic[7:0] sib,
+	input int index,
+	input logic[0:10*8-1] opd_bytes
+	/* verilator lint_on UNUSED */
+);
+	operand.opd_type = opdt_memory;
 
-/* A DFUN returns the number of bytes consumed, EXCLUDING ModRM. Or some value greater than 10 for error */
-`define DFUN(x) \
-function automatic DFUN_RET_TYPE x( \
+	if (!(sib[2:0] == 3'b101 && modrm[7:6] == 2'b00)) begin
+		operand.base_reg = reg_id({ins.rex_prefix[REX_B], sib[2:0]});
+	end
+
+	if (!(sib[5:3] == 3'b100)) begin
+		operand.index_reg = reg_id({ins.rex_prefix[REX_X], sib[5:3]});
+	end
+
+	ins.scale = sib[7:6];
+
+	if (modrm[7:6] == 2'b00 && sib[2:0] == 3'b101) begin
+		ins.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+		return 4;
+	end
+
+	unique case (modrm[7:6])
+		2'b00 : return 0;
+		2'b01 : begin
+			ins.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
+			return 1;
+		end
+		2'b10 : begin
+			ins.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+			return 4;
+		end
+		2'b11 : return 0;
+	endcase
+endfunction
+
+/*** end of simple functions ***/
+
+/*** Macros for defining handlers ***/
+`define HANDLER(fun) \
+function automatic int handle``fun( \
 	/* verilator lint_off UNUSED */ \
+	/* verilator lint_off UNDRIVEN */\
+	output operand_t operand, \
+	/* verilator lint_on UNDRIVEN */\
 	inout fat_instruction_t ins, \
-	logic[7:0] modrm, \
-	logic[3:0] index, \
-	logic[0:10*8-1] opd_bytes, \
-	inout decode_buff_t opbuff \
+	input logic[7:0] modrm, \
+	input int index, \
+	input logic[0:10*8-1] opd_bytes \
 	/* verilator lint_on UNUSED */ \
 );
+`define ENDHANDLER endfunction
 
+/*** start of handlers ***/
+`HANDLER(Ib)
+	operand.opd_type = opdt_register;
+	operand.base_reg = rimm;
+	ins.immediate = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
+	return 1;
+`ENDHANDLER
+
+`HANDLER(Iz)
+	operand.opd_type = opdt_register;
+	operand.base_reg = rimm;
+	ins.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+	return 4;
+`ENDHANDLER
+
+`HANDLER(Iv)
+	int op_size = operand_size(ins);
+	operand.opd_type = opdt_register;
+	operand.base_reg = rimm;
+	case (op_size)
+		16 : begin
+			ins.immediate = Utils::le_2bytes_to_val(`pget_bytes(opd_bytes, index, 2));
+			return 2;
+		end
+		32 : begin
+			ins.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+			return 4;
+		end
+		64 : begin
+			ins.immediate = Utils::le_8bytes_to_val(`pget_bytes(opd_bytes, index, 8));
+			return 8;
+		end
+		default: begin
+			$display("ERROR: operand size: %d", op_size);
+			return -1;
+		end
+	endcase
+`ENDHANDLER
+
+`HANDLER(Gv)
+	operand.opd_type = opdt_register;
+	operand.base_reg = reg_id({ins.rex_prefix[REX_R], modrm[5:3]});
+	return 0;
+`ENDHANDLER
+
+`HANDLER(Ev)
+	if (modrm[7:6] != 2'b11 && modrm[2:0] == 3'b100) begin // has SIB byte
+		logic [7:0] sib = `get_byte(opd_bytes, index);
+		return crackSIB(operand, ins, modrm, sib, index+1, opd_bytes);
+	end
+
+	if (modrm[7:6] == 2'b00 && modrm[2:0] == 3'b101) begin // rip relative
+		operand.opd_type = opdt_memory;
+		operand.base_reg = rip;
+		ins.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+		return 4;
+	end
+
+	operand.base_reg = reg_id({ins.rex_prefix[REX_B], modrm[2:0]});
+	unique case (modrm[7:6])
+		2'b00: begin
+			operand.opd_type = opdt_memory;
+			return 0;
+		end
+		2'b01: begin
+			operand.opd_type = opdt_memory;
+			ins.disp = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
+			return 1;
+		end
+		2'b10: begin
+			operand.opd_type = opdt_memory;
+			ins.disp = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+			return 4;
+		end
+		2'b11: begin
+			operand.opd_type = opdt_register;
+			return 0;
+		end
+	endcase
+`ENDHANDLER
+
+`HANDLER(M)
+	if (modrm[7:6] == 2'b11) begin // Not addressing memory
+		return -1;
+	end else begin
+		return handleEv(operand, ins, modrm, index, opd_bytes);
+	end
+`ENDHANDLER
+
+`HANDLER(rax)
+	operand.opd_type = opdt_register;
+	operand.base_reg = rax;
+	return 0;
+`ENDHANDLER
+
+/*** end of handlers ***/
+
+/*** Macros for defining entry points ***/
+
+/* A DFUN returns the number of bytes consumed. Or -1 for error */
+`define DFUN(fun) \
+function automatic int fun( \
+	/* verilator lint_off UNUSED */ \
+	inout fat_instruction_t ins, \
+	input logic[7:0] modrm, \
+	input int index, \
+	input logic[0:10*8-1] opd_bytes \
+	/* verilator lint_on UNUSED */ \
+);
 `define ENDDFUN endfunction
 
-`define CALL_DFUN(x) (x(ins, modrm, index, opd_bytes, opbuff))
+`define COMPOSE(hd0, hd1) \
+	int cnt0, cnt1; \
+	cnt0 = handle``hd0(ins.operand0, ins, modrm, index, opd_bytes); \
+	if (cnt0 < 0) return -1; \
+	cnt1 = handle``hd1(ins.operand1, ins, modrm, index + cnt0, opd_bytes); \
+	if (cnt1 < 0) return -1; \
+	return cnt0 + cnt1;
 
-/* TODO: move to handler_macros.sv */
+/*** start of entry points ***/
 
-`define COMBO_1_DFUNS(x)            \
-`DFUN(x)                            \
-    DFUN_RET_TYPE cnt;              \
-	cnt = `CALL_DFUN(handle``x);    \
-    ins.opa = opbuff;               \
-    return cnt;                     \
-`ENDDFUN
-
-`define reset_opbuff() \
-    opbuff = 0;
-
-`define COMBO_2_DFUNS(x, y) \
-`DFUN(x``_``y)                                                  \
-    DFUN_RET_TYPE cnt;                                          \
-	cnt = `CALL_DFUN(handle``x);                                \
-    /* first operand values are stored in fat_ins structure */  \
-    ins.opa = opbuff;                                           \
-    `reset_opbuff();                                            \
-	if (cnt > 10) begin return 11; end                          \
-	index += cnt;                                               \
-	`ins_write1(", ");                                               \
-    cnt += `CALL_DFUN(handle``y);                               \
-    /* Second operand values are stored in fat_ins structure */ \
-    ins.opb = opbuff;                                           \
-    return cnt;                                                 \
-`ENDDFUN
-
-`define DFUNR1$R2(reg_def, reg_def_print, reg_alt, reg_alt_print) \
-`DFUN(handle``reg_def``$``reg_alt)                          \
-	if(ins.rex_prefix == 0 || ins.rex_prefix[0] == 0) begin \
-        `update_opbuff_reg(opbuff, get_reg_id("%reg_def"));                   \
-		`ins_write1(reg_def_print);                              \
-	end else if(ins.rex_prefix[0] == 1) begin               \
-        `update_opbuff_reg(opbuff, get_reg_id("%reg_alt"));                   \
-		`ins_write1(reg_alt_print);                              \
-	end                                                     \
-	return 0;                                               \
-`ENDDFUN                                                    \
-                                                            \
-`COMBO_1_DFUNS(reg_def``$``reg_alt)                         \
-`COMBO_2_DFUNS(reg_def``$``reg_alt, Iv)
-
-`define DFUNR(regR, regR_print)                             \
-`DFUN(handle``regR)                                         \
-    `update_opbuff_reg(opbuff, get_reg_id("%regR"))                          \
-	`ins_write1(regR_print);                                     \
-`ENDDFUN
-
-/* operand handling utilities */
-`define resolve_index(sindex, content)                                      \
-	if(sindex != 3'b100) begin                                              \
-		`ins_write2(content, general_register_names({ins.rex_prefix[1],sindex})); \
-	end
-
-`define resolve_base(base, count)                           \
-	if(base == 3'b101 && modrm[7:6] == 2'b00) begin         \
-		print_abs(index+1, opd_bytes, 32);                  \
-		count += 4;                                         \
-	end                                                     \
-	else `ins_write2("(%s)", general_register_names({ins.rex_prefix[1],base}));
-
-`DFUN(resolve_sib)
-	/*TODO: TEST properly*/
-	logic[7:0] sib = `pget_bytes(opd_bytes, index, 1);
-	logic[1:0] scale = sib[1:0];
-	logic[2:0] sindex = sib[4:2];
-	logic[2:0] base = sib[7:5];
-	DFUN_RET_TYPE count = 0;
-	unique case(scale)
-		2'b00:begin `resolve_index(sindex, "(%s)") end
-		2'b01:begin `resolve_index(sindex, "(%s*2)") end
-		2'b10:begin `resolve_index(sindex, "(%s*4)") end
-		2'b11:begin `resolve_index(sindex, "(%s*8)") end
-	endcase
-	//base can have disp_32 when base=101 and mod=0, disp count should be accounted
-	`resolve_base(base,count)
-	//count increment 1 for SIB itself
-	return count + 1; 
-`ENDDFUN
-
-/*
-`DFUN(resolve_disp_32)
-	//SIP relative addressing
-	print_abs(1, opd_bytes, 32);
-	`ins_write1("(%%rip)");
-	return 4; //todo: the interface is wrong
-`ENDDFUN
-*/
-
-`define SIGN(x) (x<0? "-": "$")
-`define UHEX(x) (x<0? -x: x)
-
-/* Reverses bytes from val and stores it in rval */
-`define reverse_bytes(val, rval, num_bytes) \
-	for(int i=0; i<num_bytes; i++) begin \
-		rval[i*8+:8] = val[((num_bytes-i)*8-1)-:8]; \
-	end
-
-/* used for printing both displacmenet and immediate operands*/
-/* verilator lint_off width */
-function automatic logic signed[63:0] print_abs(logic[3:0] index, logic[0:10*8-1]  opd_bytes, logic[0:5] num_bits );
-	logic[63:0] disp = `pget_bytes(opd_bytes, index, 8);
-	logic signed[7:0] disp_8;
-	logic signed[15:0] disp_16;
-	logic signed[15:0] rdisp_16;
-	logic signed[31:0] disp_32;
-	logic signed[31:0] rdisp_32;
-	logic signed[63:0] disp_64;
-	logic signed[63:0] rdisp_64;
-	logic signed[63:0] b_disp;
-	//todo:at present implements -ve notation, sign extend?
-	unique case(num_bits)
-		 8: begin
-			disp_8 = disp[63:63-8+1];
-			b_disp = disp_8;
-			end	
-		16: begin
-			disp_16 = disp[63:63-16+1];
-			/* bytes read from opd_bytes stream is in reverse order */
-			`reverse_bytes(disp_16, rdisp_16, 2);
-			b_disp = rdisp_16;
-			end
-		32: begin
-			disp_32 = disp[63:63-32+1];
-			`reverse_bytes(disp_32, rdisp_32, 4);
-			b_disp = rdisp_32;
-			end	
-		64: begin
-			disp_64 = disp[63:0];
-			`reverse_bytes(disp_64, rdisp_64, 8);
-			b_disp = rdisp_64;
-			end	
-	endcase
-	`ins_write3("%s0x%0x", `SIGN(b_disp), `UHEX(b_disp));
-    return b_disp;
-endfunction
-/* verilator lint_off width *///todo:
-
-`define update_opbuff_reg(opbuff, register)\
-    opbuff.reg_id = register;\
-    opbuff.bitmap[REG] = 1;\
-
-`define update_opbuff_imm(opbuff, immediate)\
-    opbuff.immediate = immediate;\
-    opbuff.bitmap[IMM] = 1;\
-
-
-`DFUN(handleEv)
-
-	logic rex_b = ins.rex_prefix[0];
-	logic[1:0] mod = modrm[7:6];
-	logic[2:0] rm = modrm[2:0];
-	DFUN_RET_TYPE num = 16'h0;
-    logic[3:0] register = {rex_b, rm};
-
-	unique case (mod)
-		2'b00:
-			unique case (rm)
-				3'b100: num += `CALL_DFUN(resolve_sib);
-				3'b101: begin 
-						print_abs(index, opd_bytes, 32);
-						num += 4;
-					end
-				default:begin
-						`ins_write2("(%s) ", general_register_names(register));
-					end
-			endcase	
-		2'b01:
-			unique case (rm)
-				3'b100: begin //Has SIB
-						num += `CALL_DFUN(resolve_sib);
-						//num -> SIB + 1 for modrm byte
-						//Donot print displacemnt if already printed by SIB TODO
-						if(num == 1) print_abs(index + 1, opd_bytes, 8);
-					end
-				default:begin //No SIB
-						print_abs(index, opd_bytes, 8);
-						`ins_write2("(%s) ",general_register_names(register));
-						num += 1;//8 bit displacement 
-					end
-			endcase
-		2'b10:
-			unique case (rm)
-				3'b100: begin //Has SIB
-						num += `CALL_DFUN(resolve_sib);
-						if(num == 1) print_abs(index + 1, opd_bytes, 32);//todo: what if sib already printed the displacemnt
-						end
-				default:begin //No SIB
-						print_abs(index, opd_bytes, 32);
-						`ins_write2("(%s)",general_register_names(register));
-						num += 4; //32 bit displacemnt
-						end
-			endcase
-		2'b11: begin
-                `update_opbuff_reg(opbuff, register);
-			    `ins_write2("%s",general_register_names(register));
-            end
-	endcase
-	return num;
-`ENDDFUN
-
-`DFUN(handleGv)
-    logic[3:0] register = {ins.rex_prefix[2], modrm[5:3]};
-	// Assumption: Gv uses only MODRM.reg
-    `update_opbuff_reg(opbuff, register);
-	`ins_write2("%s", general_register_names(register));
+`DFUN(rax$r8)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rax, r8); 
 	return 0;
 `ENDDFUN
 
-/*  We might not need index in DFUn */
-
-`DFUN(handleIb)
-	logic[63:0] immediate = print_abs(index, opd_bytes, 8);
-    `update_opbuff_imm(opbuff, immediate);
-	return 1; //1 byte
-`ENDDFUN
-
-`DFUN(handleIz)
-	//z- rex_w = 1 => 32 bit, otherwise 16
-	logic[5:0] operand_size;
-	bit rex_w = ins.rex_prefix[3];
-    logic[63:0] immediate;
-	
-	if(rex_w == 1'b1) operand_size = 32;
-	else begin//operand size determined by CS.D??
-		if(ins.operand_size_prefix == 0) operand_size = 32; //no override
-		else operand_size = 16;
-	end
-	
-	immediate = print_abs(index, opd_bytes, operand_size);
-    `update_opbuff_imm(opbuff, immediate);
-	return operand_size/5'h8;
-`ENDDFUN
-
-`DFUN(handleIv)
-	//z- rex_w = 1 => 64 bit, otherwise 16/32
-	logic[5:0] operand_size;
-	logic rex_w = ins.rex_prefix[3];
-    logic[63:0] immediate;
-	
-	if(rex_w == 1'b1) begin operand_size = 6'd64; end
-	else begin//operand size determined by CS.D??
-		if(ins.operand_size_prefix == 0) operand_size = 6'd32; //no override
-		else operand_size = 6'd16;
-	end
-    immediate = print_abs(index, opd_bytes, operand_size);
-    `update_opbuff_imm(opbuff, immediate);
-	return operand_size/5'h8;
-`ENDDFUN
-
-`DFUN(handleM)
-	if (modrm[7:6] == 2'b11) begin
-		return 11;
-	end
-	return `CALL_DFUN(handleEv);
-`ENDDFUN
-
-/* verilator lint_off UNDRIVEN */ `DFUNR(rax, "%%rax") /* verilator lint_on UNDRIVEN */
-
-/*
-`DFUN(handleEp)
-	// (No) - Instruction prefix - REX.W - Effective operand size - pointer size
-	// -------------------------------------------------------------------------
-	// (1)  - don't care         - 1     - 64                     - 80
-	// (2)  - no 66h             - 0     - 32                     - 48
-	// (3)  - yes 66h            - 0     - 16                     - 32
-`ENDDFUN
-
-`DFUN(handleYb)
-	`ins_write1("%%es:(%%rdi)");
+`DFUN(rcx$r9)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rcx, r9); 
 	return 0;
 `ENDDFUN
 
-`DFUN(handleDX)
-	`ins_write1("(%%dx)");
+`DFUN(rdx$r10)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rdx, r10); 
 	return 0;
 `ENDDFUN
 
-`DFUN(handleXz)
-	`ins_write1("(%%ds:(%%rsi))");
+`DFUN(rbx$r11)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rbx, r11); 
 	return 0;
 `ENDDFUN
-*/
 
+`DFUN(rsp$r12)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rsp, r12); 
+	return 0;
+`ENDDFUN
 
-/* R1$R2 handlers and entry points */
+`DFUN(rbp$r13)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rbp, r13); 
+	return 0;
+`ENDDFUN
 
-`DFUNR1$R2(rax, "%%rax", r8,  "%%r8" )
-`DFUNR1$R2(rcx, "%%rcx", r9,  "%%r9" )
-`DFUNR1$R2(rdx, "%%rdx", r10, "%%r10")
-`DFUNR1$R2(rbx, "%%rbx", r11, "%%r11")
-`DFUNR1$R2(rsp, "%%rsp", r12, "%%r12")
-`DFUNR1$R2(rbp, "%%rbp", r13, "%%r13")
-`DFUNR1$R2(rsi, "%%rsi", r14, "%%r14")
-`DFUNR1$R2(rdi, "%%rdi", r15, "%%r15")
+`DFUN(rsi$r14)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rsi, r14); 
+	return 0;
+`ENDDFUN
 
+`DFUN(rdi$r15)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rdi, r15); 
+	return 0;
+`ENDDFUN
 
-/* operand handling entry points */
+`DFUN(rax$r8_Iv)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rax, r8); 
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
+`ENDDFUN
 
-`COMBO_1_DFUNS(Ev)
-`COMBO_2_DFUNS(Ev, Gv)
-`COMBO_2_DFUNS(Ev, Iv)
-`COMBO_2_DFUNS(Ev, Ib)
-`COMBO_2_DFUNS(Ev, Iz)
+`DFUN(rcx$r9_Iv)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rcx, r9); 
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
+`ENDDFUN
 
-`COMBO_2_DFUNS(Gv, Ev)
-`COMBO_2_DFUNS(Gv, M)
-`COMBO_2_DFUNS(Ev, rax)
-`COMBO_2_DFUNS(rax, Iz)
+`DFUN(rdx$r10_Iv)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rdx, r10); 
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
+`ENDDFUN
+
+`DFUN(rbx$r11_Iv)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rbx, r11); 
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
+`ENDDFUN
+
+`DFUN(rsp$r12_Iv)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rsp, r12); 
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
+`ENDDFUN
+
+`DFUN(rbp$r13_Iv)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rbp, r13); 
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
+`ENDDFUN
+
+`DFUN(rsi$r14_Iv)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rsi, r14); 
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
+`ENDDFUN
+
+`DFUN(rdi$r15_Iv)
+	fillFixedReg(ins.operand0, ins.rex_prefix, rdi, r15); 
+	return handleIv(ins.operand1, ins, modrm, index, opd_bytes);
+`ENDDFUN
+
+`DFUN(Ev)
+	return handleEv(ins.operand0, ins, modrm, index, opd_bytes);
+`ENDDFUN
+
+`DFUN(Ev_Gv)
+	`COMPOSE(Ev, Gv);
+`ENDDFUN
+
+`DFUN(Ev_Ib)
+	`COMPOSE(Ev, Ib);
+`ENDDFUN
+
+`DFUN(Ev_Iz)
+	`COMPOSE(Ev, Iz);
+`ENDDFUN
+
+`DFUN(Gv_Ev)
+	`COMPOSE(Gv, Ev);
+`ENDDFUN
+
+`DFUN(Gv_M)
+	`COMPOSE(Gv, M);
+`ENDDFUN
+
+`DFUN(rax_Iz)
+	`COMPOSE(rax, Iz);
+`ENDDFUN
 
 `DFUN(Jz)
-	`ins_write1("%%rip:");
-	return `CALL_DFUN(handleIz);
+	ins.operand0.opd_type = opdt_register;
+	ins.operand0.base_reg = rimm;
+	ins.immediate = Utils::le_4bytes_to_val(`pget_bytes(opd_bytes, index, 4));
+	return 4;
 `ENDDFUN
 
 `DFUN(Jb)
-	`ins_write1("%%rip:");
-	return `CALL_DFUN(handleIb);
+	ins.operand0.opd_type = opdt_register;
+	ins.operand0.base_reg = rimm;
+	ins.immediate = Utils::le_1bytes_to_val(`get_byte(opd_bytes, index));
+	return 1;
 `ENDDFUN
 
 `DFUN(_)
 	return 0;
 `ENDDFUN
 
-`define FULLD(x, x_str, mm) x_str: \
-begin \
-	ins.operands_use_modrm=(mm); \
-	if (mm) begin modrm = `get_byte(opd_bytes, 0); index++; end \
-	cnt = (mm) + x(ins, modrm, index, opd_bytes, opbuff); \
-end
+/*** end of entry points ***/
 
-`define D(x, mm) `FULLD(x, "x", mm)
+function automatic logic has_modrm( /* verilator lint_off UNUSED */ fat_instruction_t ins /* verilator lint_on UNUSED */);
 
-`define DRR(r) \
-	`FULLD(r, "r", 0) \
-	`FULLD(r``_Iv, {"r","_Iv"}, 0)
+	if (ins.opcode_struct.group != 0) return 1;
 
-/* If there is error, some value greater than 10 is returned. Otherwise, the number of bytes consumed is returned. */
-function automatic logic[3:0] decode_operands(
+	case (ins.opcode_struct.mode)
+		"Ev": return 1;
+		"Ev_Gv": return 1;
+		"Ev_Ib": return 1;
+		"Ev_Iz": return 1;
+		"Gv_Ev": return 1;
+		"Gv_M": return 1;
+		default: return 0;
+	endcase
+
+endfunction
+
+`define D(mode) "mode" : cnt = mode(ins, modrm, index, opd_bytes);
+
+/* Return -1 if error. Otherwise, the number of bytes consumed is returned. */
+function automatic int decode_operands(
 	/* verilator lint_off UNUSED */
-	inout fat_instruction_t ins, 
+	inout fat_instruction_t ins,
 	/* verilator lint_on UNUSED */
 	input logic[0:10*8-1] opd_bytes
 );
 
-	logic[15:0] cnt = 0;
 	logic[7:0] modrm = 0;
-	logic[3:0] index = 0;
-    decode_buff_t opbuff; /* I hate to declare it here! MACRO mess!*/
-    opbuff.reg_id = 0;
-    opbuff.immediate = 0;
-    opbuff.bitmap = 0;
+	int index = 0;
+	int cnt = 0;
 
-	`ins_write2("%s  \t", ins.opcode_struct.name);
+	if (has_modrm(ins)) begin
+		modrm = `get_byte(opd_bytes, 0);
+		index = 1;
+	end
 
 	case (ins.opcode_struct.mode)
-		/* R$R cases */
-		`DRR(rax$r8)
-		`DRR(rcx$r9)
-		`DRR(rdx$r10)
-		`DRR(rbx$r11)
-		`DRR(rsp$r12)
-		`DRR(rbp$r13)
-		`DRR(rsi$r14)
-		`DRR(rdi$r15)
-		/* other cases */
-		`D(Ev, 1)
-		`D(Ev_Gv, 1)
-		`D(Ev_Ib, 1)
-		`D(Ev_Iz, 1)
-		`D(Gv_Ev, 1)
-		`D(Gv_M, 1)
-		`D(Ev_rax, 1)
-		`D(rax_Iz, 0)
-		`D(Jz, 0)
-		`D(Jb, 0)
-		`D(_, 0)
-		default: cnt = 11; // >10 means error
+		`D(rax$r8)
+		`D(rcx$r9)
+		`D(rdx$r10)
+		`D(rbx$r11)
+		`D(rsp$r12)
+		`D(rbp$r13)
+		`D(rsi$r14)
+		`D(rdi$r15)
+		`D(rax$r8_Iv)
+		`D(rcx$r9_Iv)
+		`D(rdx$r10_Iv)
+		`D(rbx$r11_Iv)
+		`D(rsp$r12_Iv)
+		`D(rbp$r13_Iv)
+		`D(rsi$r14_Iv)
+		`D(rdi$r15_Iv)
+		`D(Ev)
+		`D(Ev_Gv)
+		`D(Ev_Ib)
+		`D(Ev_Iz)
+		`D(Gv_Ev)
+		`D(Gv_M)
+		`D(rax_Iz)
+		`D(Jz)
+		`D(Jb)
+		`D(_)
+		default: begin 
+			$display("ERROR: opcode mode unsupported: %s", ins.opcode_struct.mode);
+			return -1;
+		end
 	endcase
-//    $display("\n rega:%0d imma:%0x opabitmap:%0x regb:%0d immb:%0x opbbitmap:%0x",ins.opa.reg_id, ins.opa.immediate, ins.opa.bitmap, ins.opb.reg_id, ins.opb.immediate, ins.opb.bitmap);
 
-	if (cnt > 10) begin
-		return 11;
+	if (cnt < 0) begin
+		return -1;
 	end else begin
-		return cnt[3:0];
+		return index + cnt;
 	end
 
 endfunction

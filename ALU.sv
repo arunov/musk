@@ -1,19 +1,24 @@
 
 `include "MacroUtils.sv"
 
-`define readval(X) \
-	case (fat_inst.op``X``.bitmap) \
-		REG_BITMAP: val``X = `get_64(reg_file_in, fat_inst.op``X``.reg_id); \
-		IMM_BITMAP: val``X = fat_inst.op``X``.immediate; \
-		default: val``X = fat_inst.op``X``.immediate; \
-	endcase
-
-`define dobinop(opcode, oper)	"opcode": `get_64(reg_file_out, fat_inst.opa.reg_id) = vala oper valb;
-`define domovop(opcode)		"opcode": `get_64(reg_file_out, fat_inst.opa.reg_id) = valb;
+`define dobinop(opcode, oper)	"opcode": `get_64(reg_file_out, fat_inst.operand0.base_reg) = vala oper valb;
+`define domovop(opcode)		"opcode": `get_64(reg_file_out, fat_inst.operand0.base_reg) = valb;
 
 package ALU;
 
 import DecoderTypes::*;
+import RegMap::*;
+
+function automatic logic[63:0] readval( 
+	/* verilator lint_off UNUSED */
+	fat_instruction_t fat_inst,
+	operand_t operand,
+	logic[0:16*64-1] reg_file 
+	/* verilator lint_on UNUSED */
+);
+	if (operand.opd_type == opdt_register && operand.base_reg != rimm) return `get_64(reg_file, operand.base_reg);
+	return fat_inst.immediate;
+endfunction
 
 function automatic void doimul(
 	input logic[63:0] vala,
@@ -37,8 +42,8 @@ function automatic logic alu(
 
 	logic[63:0] vala, valb;
 
-	`readval(a)
-	`readval(b)
+	vala = readval(fat_inst, fat_inst.operand0, reg_file_in);
+	valb = readval(fat_inst, fat_inst.operand1, reg_file_in);
 
 	reg_file_out = reg_file_in;
 	case (fat_inst.opcode_struct.name)
