@@ -1,6 +1,7 @@
 
 import DecoderTypes::*;
 import Decoder::decode;
+import ALU::alu;
 
 module MuskCore (
 	input[63:0] entry,
@@ -13,7 +14,7 @@ module MuskCore (
 	/* verilator lint_on UNDRIVEN */
 );
 
-	logic[63:0] fetch_addr_ff, rip_ff;
+	logic[63:0] fetch_addr_ff, rip_ff, rd_addr;
 	int bytes_decoded_this_cycle, decode_return;
 
 	logic rd_reqcyc_ff, rd_respcyc;
@@ -21,23 +22,23 @@ module MuskCore (
 
 	logic fq_en, fq_de;
 	logic [0:64*8-1] fq_in_data;
-	logic [0:64*15-1] fq_out_data;
+	logic [0:15*8-1] fq_out_data;
 	int fq_in_cnt, fq_out_cnt, fq_used_cnt, fq_empty_cnt;
 
 /*** FETCH ***/
 
-	//MuskbusReader reader(reset, clk, bus, rd_reqcyc_ff, fetch_addr_ff, rd_respcyc, rd_data);
-	SetAssocReadCache reader(reset, clk, bus, rd_reqcyc_ff, fetch_addr_ff, rd_respcyc, rd_data);
-	Queue fetch_queue#(64*8, 15*8, 64*8*4)(reset, clk, fq_en, fq_in_cnt, fq_in_data, fq_de, fq_out_cnt, fq_out_data, fq_used_cnt, fq_empty_cnt);
+	//MuskbusReader reader(reset, clk, bus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+	SetAssocReadCache reader(reset, clk, bus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+	Queue #(64*8, 15*8, 64*8*4) fetch_queue(reset, clk, fq_en, fq_in_cnt, fq_in_data, fq_de, fq_out_cnt, fq_out_data, fq_used_cnt, fq_empty_cnt);
 
 	always_ff @ (posedge clk) begin
 		if (reset) begin
-			fetch_addr_ff <= entry & ~63;
+			fetch_addr_ff <= entry;
 			rd_reqcyc_ff <= 0;
-			rip_ff <= entry & ~63;
+			rip_ff <= entry;
 		end else begin
 			if (rd_respcyc) begin
-				fetch_addr_ff <= fetch_addr_ff + 64;
+				fetch_addr_ff <= (fetch_addr_ff & ~63) + 64;
 			end
 
 			if (rd_respcyc) begin
@@ -46,9 +47,11 @@ module MuskCore (
 				rd_reqcyc_ff <= fq_empty_cnt >= 64 * 8;
 			end
 
-			rip_ff <= rip_ff + bytes_decoded_this_cycle;
+			rip_ff <= rip_ff + {32'b0, bytes_decoded_this_cycle};
 		end
 	end
+
+	assign rd_addr = fetch_addr_ff & ~63;
 
 	always_comb begin
 		fq_en = rd_respcyc;
@@ -63,7 +66,7 @@ module MuskCore (
 		fq_de = bytes_decoded_this_cycle > 0;
 		fq_out_cnt = bytes_decoded_this_cycle * 8;
 		decode_bytes = fq_out_data;
-		can_decode = fq_empty_cnt >= 15 * 8;
+		can_decode = fq_used_cnt >= 15 * 8;
 	end
 
 /*** DECODE ***/
