@@ -27,9 +27,9 @@ module SRAM(
 
 		if (delay > 0)  begin
 			readpipe[0]     <= mem[readAddr];
+			readData        <= readpipe[delay-1];
 			for(i=1; i<delay; ++i)
 				readpipe[i] <= readpipe[i-1];
-				readData        <= readpipe[delay-1];
 			end
 		else            begin
 			readData        <= mem[readAddr];

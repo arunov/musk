@@ -20,7 +20,6 @@ obj_dir/Vtop.mk: $(VFILES) $(CFILES)
 
 run: obj_dir/Vtop
 	cd obj_dir/ && ./Vtop $(RUNELF)
-	#cd obj_dir/ && valgrind --leak-check=full ./Vtop $(RUNELF)
 
 prog: obj_dir/Vtop
 	cd obj_dir/ && ./Vtop ../prog$(n)

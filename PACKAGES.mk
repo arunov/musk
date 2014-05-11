@@ -10,3 +10,4 @@ PACKAGES += Decoder.sv
 PACKAGES += MicroOp.sv
 PACKAGES += ALU.sv
 PACKAGES += CACHE.sv
+PACKAGES += MuskCoreUtils.sv

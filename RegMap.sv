@@ -46,9 +46,14 @@ typedef struct packed {
 
 typedef logic[0:8*8-1] reg_name_t;
 
+function automatic logic reg_in_file(reg_id_t id);
+	return id >= rax && id <= rhc;
+endfunction
+
 function automatic logic[7:0] reg_num(reg_id_t id);
-	if (id < rax) begin
+	if (!reg_in_file(id)) begin
 		$display("ERROR: reg_num: attempt to access fake register: %x", id);
+		return 0;
 	end
 	return {1'b0, id[6:0]};
 endfunction
@@ -85,7 +90,10 @@ function automatic reg_name_t reg_id2name(reg_id_t id);
 	map[rhb] = "%rhb";
 	map[rhc] = "%rhc";
 
-	if (map[id] == 0) $display("ERROR: no mapping for reg_id2name %x: ", id);
+	if (map[id] == 0) begin
+		$display("ERROR: no mapping for reg_id2name %x: ", id);
+		return 0;
+	end
 
 	return map[id];
 
@@ -123,10 +131,33 @@ function automatic reg_id_t reg_name2id(reg_name_t name);
 		"%rhc": return rhc;
 		default : begin
 			$display("ERROR: no mapping for reg_name2id %s: ", name);
-			return rax;
+			return 0;
 		end
 	endcase
 
+endfunction
+
+function automatic void print_reg_file(reg_val_t[0:REG_FILE_SIZE-1] reg_file);
+		$display("RAX = %x", reg_file[0].val);
+		$display("RCX = %x", reg_file[1].val);
+		$display("RDX = %x", reg_file[2].val);
+		$display("RBX = %x", reg_file[3].val);
+		$display("RSP = %x", reg_file[4].val);
+		$display("RBP = %x", reg_file[5].val);
+		$display("RSI = %x", reg_file[6].val);
+		$display("RDI = %x", reg_file[7].val);
+		$display("R8 = %x", reg_file[8].val);
+		$display("R9 = %x", reg_file[9].val);
+		$display("R10 = %x", reg_file[10].val);
+		$display("R11 = %x", reg_file[11].val);
+		$display("R12 = %x", reg_file[12].val);
+		$display("R13 = %x", reg_file[13].val);
+		$display("R14 = %x", reg_file[14].val);
+		$display("R15 = %x", reg_file[15].val);
+		$display("RFLAGS = %x", reg_file[16].val);
+		$display("RHA = %x", reg_file[17].val);
+		$display("RHB = %x", reg_file[18].val);
+		$display("RHC = %x", reg_file[19].val);
 endfunction
 
 endpackage

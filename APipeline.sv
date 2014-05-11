@@ -1,15 +1,14 @@
-
-import DecoderTypes::*;
-
 module APipeline(
 	input logic reset,
 	input logic clk,
 	input logic in_ready,
-	input micro_op_t in_mop,
+	input DecoderTypes::micro_op_t in_mop,
 	output logic busy,
 	output logic out_ready,
-	output micro_op_t out_mop
+	output DecoderTypes::micro_op_t out_mop
 );
+
+import DecoderTypes::*;
 
 	logic alu_in_ready_ff, alu_out_ready_ff;
 	micro_op_t alu_in_ff, alu_out_ff;

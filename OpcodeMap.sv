@@ -100,14 +100,14 @@ import DecoderTypes::*;
 
 	`M(90, nop, _)
 
-	`M(B8, movabs, rax$r8_Iv)
-	`M(B9, movabs, rcx$r9_Iv)
-	`M(BA, movabs, rdx$r10_Iv)
-	`M(BB, movabs, rbx$r11_Iv)
-	`M(BC, movabs, rsp$r12_Iv)
-	`M(BD, movabs, rbp$r13_Iv)
-	`M(BE, movabs, rsi$r14_Iv)
-	`M(BF, movabs, rdi$r15_Iv)
+	`M(B8, mov, rax$r8_Iv)
+	`M(B9, mov, rcx$r9_Iv)
+	`M(BA, mov, rdx$r10_Iv)
+	`M(BB, mov, rbx$r11_Iv)
+	`M(BC, mov, rsp$r12_Iv)
+	`M(BD, mov, rbp$r13_Iv)
+	`M(BE, mov, rsi$r14_Iv)
+	`M(BF, mov, rdi$r15_Iv)
 
 	`G(C1, 2, Ev_Ib)
 	`M(C3, retq, _)
