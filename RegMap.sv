@@ -46,8 +46,12 @@ typedef struct packed {
 
 typedef logic[0:8*8-1] reg_name_t;
 
+function automatic logic reg_in_file(reg_id_t id);
+	return id >= rax && id <= rhc;
+endfunction
+
 function automatic logic[7:0] reg_num(reg_id_t id);
-	if (id < rax) begin
+	if (!reg_in_file(id)) begin
 		$display("ERROR: reg_num: attempt to access fake register: %x", id);
 	end
 	return {1'b0, id[6:0]};

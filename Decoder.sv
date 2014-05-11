@@ -50,7 +50,7 @@ endfunction
 	cur_byte = `get_byte(dc_bytes, byte_index);
 
 /** Return number of bytes decoded, or -1 for error. **/
-function automatic int decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t ins);
+function automatic int decode(logic[0:15*8-1] dc_bytes, logic[63:0] pc_ff, output fat_instruction_t ins);
 
 	/* verilator lint_off UNUSED */
 	logic[0:15*8-1] dc_bytes_copy = dc_bytes;
@@ -121,6 +121,7 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, output fat_instruction_t
 	`ins_write1("\n");
 `endif
 
+	ins.rip_val = pc_ff + {32'b0, byte_index};
 	return byte_index;
 
 endfunction
