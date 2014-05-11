@@ -1,21 +1,20 @@
-
-import CACHE::*;
-import DecoderTypes::*;
-
 module MPipeline(
 	input logic reset,
 	input logic clk,
 	input logic in_ready,
-	input micro_op_t in_mop,
+	input DecoderTypes::micro_op_t in_mop,
 	output logic busy,
 	output logic out_ready,
-	output micro_op_t out_mop
-	output cache_cmd_t ca_req_cmd,
+	output DecoderTypes::micro_op_t out_mop
+	output CACHE::cache_cmd_t ca_req_cmd,
 	output logic [63:0] ca_req_addr,
 	output logic [63:0] ca_req_data,
 	input logic ca_respcyc,
 	input logic [63:0] ca_resp_data
 );
+
+import CACHE::*;
+import DecoderTypes::*;
 
 	logic mem_running_ff, mem_returns_ff;
 	micro_op_t mem_cmd_ff, mem_out_ff, mem_out_cb;
@@ -38,7 +37,6 @@ module MPipeline(
 				default : begin
 					ca_req_cmd = IDLE;
 					$display("ERROR: unknown mem pipeline cmd: %x", mem_cmd_ff.opcode);
-					$finish;
 				end
 			endcase
 		end else begin

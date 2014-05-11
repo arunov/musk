@@ -1,3 +1,5 @@
+`include "MacroUtils.sv"
+
 package MicroOp;
 
 import DecoderTypes::*;
@@ -56,7 +58,7 @@ function automatic int crack_opd0_opd1_out_opd0_rflags(
 		return 4;
 	end 
 	$display("ERROR: crack_opd0_opd1_out_opd0_rflags: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
-	$finish;
+	return 0;
 endfunction
 
 function automatic int crack_opd0_opd1_out_opd0_maybe_rflags(
@@ -91,7 +93,7 @@ function automatic int crack_opd0_opd1_out_opd0_maybe_rflags(
 		return 5;
 	end 
 	$display("ERROR: crack_opd0_opd1_out_opd0_maybe_rflags: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
-	$finish;
+	return 0;
 endfunction
 
 function automatic int crack_opd0_opd1_out_rflags(
@@ -120,7 +122,7 @@ function automatic int crack_opd0_opd1_out_rflags(
 		return 3;
 	end 
 	$display("ERROR: crack_opd0_opd1_out_flags: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
-	$finish;
+	return 0;
 endfunction
 
 function automatic int crack_imul1(
@@ -148,7 +150,7 @@ function automatic int crack_imul1(
 		return 6;
 	end
 	$display("ERROR: crack_imul1: invalid operand type: %x", ins.operand0.opd_type); 
-	$finish;
+	return 0;
 endfunction
 
 function automatic int crack_jcc(
@@ -176,7 +178,7 @@ function automatic int crack_jcc(
 		return 3;
 	end
 	$display("ERROR: crack_jcc: invalid operand type: %x", ins.operand0.opd_type); 
-	$finish;
+	return 0;
 endfunction
 
 
@@ -254,7 +256,7 @@ function automatic int ins_``fun( \
 	end else begin
 		// three operands
 		$display("ERROR: imul: 3-operand imul not supported yet"); 
-		$finish;
+		return 0;
 	end
 `ENDMOPFUN
 
@@ -303,7 +305,7 @@ function automatic int ins_``fun( \
 		return 3;
 	end
 	$display("ERROR: jmp: invalid operand type: %x", ins.operand0.opd_type); 
-	$finish;
+	return 0;
 `ENDMOPFUN
 
 `MOPFUN(mov)
@@ -322,7 +324,7 @@ function automatic int ins_``fun( \
 		return 2;
 	end 
 	$display("ERROR: mov: invalid combo: %x, %x", ins.operand0.opd_type, ins.operand1.opd_type); 
-	$finish;
+	return 0;
 `ENDMOPFUN
 
 `MOPFUN(pop)
@@ -340,7 +342,7 @@ function automatic int ins_``fun( \
 		return 4;
 	end
 	$display("ERROR: pop: invalid operand type: %x", ins.operand0.opd_type); 
-	$finish;
+	return 0;
 `ENDMOPFUN
 
 `MOPFUN(push)
@@ -357,7 +359,7 @@ function automatic int ins_``fun( \
 		return 4;
 	end
 	$display("ERROR: push: invalid operand type: %x", ins.operand0.opd_type); 
-	$finish;
+	return 0;
 `ENDMOPFUN
 
 `MOPFUN(callq)
@@ -381,7 +383,7 @@ function automatic int ins_``fun( \
 		return 5;
 	end
 	$display("ERROR: callq: invalid operand type: %x", ins.operand0.opd_type); 
-	$finish;
+	return 0;
 `ENDMOPFUN
 
 `MOPFUN(retq)
@@ -399,13 +401,12 @@ function automatic int ins_``fun( \
 `define MOP(name) "name" : cnt = ins_``name(ins, mops);
 
 /** Return the number of micro ops generated. **/
-/** On error, program will be stopped, so no need for caller to handle error case. **/
-function automatic int gen_micro_ops(fat_instruction_t ins, output micro_op_t[0:MAX_MOP_CNT-1] mops);
+function automatic int gen_micro_ops(fat_instruction_t ins, output logic [0:$bits(micro_op_t)*MAX_MOP_CNT-1] mops_bits);
 
 	int cnt = 0;
 	int i = 0;
+	micro_op_t[0:MAX_MOP_CNT-1] mops = 0;
 
-	mops = 0;
 	case (ins.opcode_struct.name)
 		`MOP(nop)
 		`MOP(lea)
@@ -435,7 +436,7 @@ function automatic int gen_micro_ops(fat_instruction_t ins, output micro_op_t[0:
 		`MOP(retq)
 		default : begin
 			$display("ERROR: instuction not supported: %s", ins.opcode_struct.name);
-			$finish;
+			return 0;
 		end
 	endcase
 
@@ -444,6 +445,12 @@ function automatic int gen_micro_ops(fat_instruction_t ins, output micro_op_t[0:
 		mops[i].scale = ins.scale;
 		mops[i].disp = ins.disp;
 		mops[i].immediate = ins.immediate;
+	end
+
+	for (i = 0; i < MAX_MOP_CNT; i++) begin
+		// Handle counter intuitive (always big-endian, no matter how the array is declared) 
+		// block placement of structure/2-dimensional arrays.
+		`get_block(mops_bits, i, $bits(micro_op_t)) = mops[i];
 	end
 
 	return cnt;
