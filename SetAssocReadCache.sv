@@ -15,7 +15,7 @@ module SetAssocReadCache (
 );
 	parameter ways = 4
 	,	indexBits = 10
-	// TODO (2) necessitates defineing numFrames rather than calculating it in code
+	// TODO (2) necessitates defining numFrames rather than calculating it in code
 	// numFrames = 2 to the power indexBits
 	//,	numFrames = 1024
 	// ----------------------------
@@ -53,7 +53,7 @@ module SetAssocReadCache (
 	logic [7:0] writeEnable;
 
 	SRAM #(.logDepth(cacheAddrSize))
-	cache(clk, readAddr, readData, writeAddr, writeData, writeEnable);
+	cache(clk, reset, readAddr, readData, writeAddr, writeData, writeEnable);
 
 	enum {idle, read_cache, write_cache} state, state_cb;
 
