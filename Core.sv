@@ -6,6 +6,7 @@ module Core (
 	/* verilator lint_on UNUSED */
 	/* verilator lint_on UNDRIVEN */
 );
+	import "DPI-C" function longint syscall_cse502(input longint rax, input longint rdi, input longint rsi, input longint rdx, input longint r10, input longint r8, input longint r9);
 
 	logic reset, clk;
 	/* verilator lint_off UNDRIVEN */
