@@ -91,4 +91,18 @@ typedef struct packed {
 	logic[63:0] rip_val;
 } micro_op_t;
 
+function automatic void print_mop(micro_op_t mop);
+	$display("mop.opcode = %x", mop.opcode);
+	$display("mop.src0_id = %x", mop.src0_id);
+	$display("mop.src1_id = %x", mop.src1_id);
+	$display("mop.dst_id = %x", mop.dst_id);
+	$display("mop.src0_val = %x", mop.src0_val);
+	$display("mop.src1_val = %x", mop.src1_val);
+	$display("mop.dst_val = %x", mop.dst_val);
+	$display("mop.scale = %x", mop.scale);
+	$display("mop.disp = %x", mop.disp);
+	$display("mop.immediate = %x", mop.immediate);
+	$display("mop.rip_val = %x", mop.rip_val);
+endfunction
+
 endpackage
