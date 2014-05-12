@@ -54,14 +54,14 @@ function automatic reg_val_t read_reg(
 		rv0 : rval.val = 0;
 		rv8 : rval.val = 8;
 		rsyscall : begin 
-			rval.val = $syscall_cse502(
-				reg_file[reg_num(rax), 
-				reg_file[reg_num(rdi), 
-				reg_file[reg_num(rsi), 
-				reg_file[reg_num(rdx), 
-				reg_file[reg_num(r10), 
-				reg_file[reg_num(r8), 
-				reg_file[reg_num(r9));
+			rval.val = syscall_cse502(
+				reg_file[reg_num(rax)].val, 
+				reg_file[reg_num(rdi)].val, 
+				reg_file[reg_num(rsi)].val, 
+				reg_file[reg_num(rdx)].val, 
+				reg_file[reg_num(r10)].val, 
+				reg_file[reg_num(r8)].val, 
+				reg_file[reg_num(r9)].val);
 		end
 		default : begin
 			if (reg_in_file(id)) begin
@@ -94,7 +94,9 @@ function automatic logic mop_will_branch(
 	/* verilator lint_on UNUSED */
 );
 
+	/* verilator lint_off UNUSED */
 	reg_val_t fs = mop.src1_val;
+	/* verilator lint_on UNUSED */
 
 	case (mop.opcode)
 		m_jnb : return fs.cf == 0;

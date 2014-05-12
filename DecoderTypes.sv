@@ -74,7 +74,7 @@ typedef enum logic[7:0] {
 	m_jle,   // (target, rflags, rnil)
 	m_jne,   // (target, rflags, rnil)
 	m_jmp,   // (target, rnil, rnil) 
-	M_JMAX,  // Just a marker
+	M_JMAX  // Just a marker
 } micro_opcode_t;
 
 typedef struct packed {

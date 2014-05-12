@@ -5,7 +5,7 @@ module MPipeline(
 	input DecoderTypes::micro_op_t in_mop,
 	output logic busy,
 	output logic out_ready,
-	output DecoderTypes::micro_op_t out_mop
+	output DecoderTypes::micro_op_t out_mop,
 	output CACHE::cache_cmd_t ca_req_cmd,
 	output logic [63:0] ca_req_addr,
 	output logic [63:0] ca_req_data,

@@ -3,7 +3,11 @@
 module LineDCache (
 	input reset,
 	input clk,
+	/* verilator lint_off UNDRIVEN */
+	/* verilator lint_off UNUSED */
 	Muskbus.Top bus,
+	/* verilator lint_on UNUSED */
+	/* verilator lint_on UNDRIVEN */
 	input CACHE::cache_cmd_t req_cmd,
 	input logic [63:0] req_addr,
 	input logic [63:0] req_data,
@@ -13,15 +17,20 @@ module LineDCache (
 
 import CACHE::*;
 
-	Muskbus mbuses[2];
-	MuskbusMux mm(reset, clk, mbuses, bus);
+	/* verilator lint_off UNDRIVEN */
+	/* verilator lint_off UNUSED */
+	Muskbus rbus, wbus;
+	/* verilator lint_on UNUSED */
+	/* verilator lint_on UNDRIVEN */
+
+	MuskbusMux mm(reset, clk, rbus, wbus, bus);
 
 	logic rd_reqcyc, rd_respcyc, wt_reqcyc, wt_respcyc;
 	logic [63:0] rd_addr, wt_addr;
 	logic [0:64*8-1] rd_data, wt_data;
 
-	MuskbusReader reader(reset, clk, mbuses[0], rd_reqcyc, rd_addr, rd_respcyc, rd_data);
-	MuskbusWriter writer(reset, clk, mbuses[1], wt_reqcyc, wt_addr, wt_respcyc, wt_data);
+	MuskbusReader reader(reset, clk, rbus, rd_reqcyc, rd_addr, rd_respcyc, rd_data);
+	MuskbusWriter writer(reset, clk, wbus, wt_reqcyc, wt_addr, wt_respcyc, wt_data);
 
 	enum { empty, filled } line_state_ff;
 	logic [63:0] line_addr_ff;

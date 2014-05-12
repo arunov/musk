@@ -67,7 +67,7 @@ function automatic reg_name_t reg_id2name(reg_id_t id);
 	map[rnil] = "%rnil";
 	map[rip] = "%rip";
 	map[rimm] = "%rimm";
-	map[rsyscall] = "%rsyscall";
+	map[rsyscall] = "%syscall";
 	map[rv0] = "%rv0";
 	map[rv8] = "%rv8";
 	/** real registers **/
@@ -108,7 +108,7 @@ function automatic reg_id_t reg_name2id(reg_name_t name);
 		"%rnil": return rnil;
 		"%rip": return rip;
 		"%rimm": return rimm;
-		"%rsyscall": return rsyscall;
+		"%syscall": return rsyscall;
 		"%rv0": return rv0;
 		"%rv8": return rv8;
 		/** real registers **/

@@ -19,21 +19,26 @@ import MicroOp::gen_micro_ops;
 
 /*** CACHES ***/
 
-	Muskbus mbuses[2];
-	MuskbusMux mm(reset, clk, mbuses, bus);
+	/* verilator lint_off UNDRIVEN */
+	/* verilator lint_off UNUSED */
+	Muskbus dbus, ibus;
+	/* verilator lint_on UNUSED */
+	/* verilator lint_on UNDRIVEN */
+
+	MuskbusMux mm(reset, clk, dbus, ibus, bus);
 
 	logic rd_reqcyc_ff, rd_respcyc;
 	logic [63:0] rd_addr;
 	logic [0:64*8-1] rd_data;
 
-	//MuskbusReader reader(reset, clk, mbuses[0], rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
-	SetAssocReadCache reader(reset, clk, mbuses[0], rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+	MuskbusReader reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+	// SetAssocReadCache reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
 
 	CACHE::cache_cmd_t ca_req_cmd;
 	logic ca_respcyc;
 	logic [63:0] ca_req_addr, ca_req_data, ca_resp_data;
 
-	LineDCache cache(reset, clk, mbuses[1], ca_req_cmd, ca_req_addr, ca_req_data, ca_respcyc, ca_resp_data);
+	LineDCache cache(reset, clk, dbus, ca_req_cmd, ca_req_addr, ca_req_data, ca_respcyc, ca_resp_data);
 
 /*** BRANCH ***/
 	logic soft_reset, jmp_reset;
@@ -46,7 +51,7 @@ import MicroOp::gen_micro_ops;
 
 /*** FETCH ***/
 
-	logic[63:0] fetch_addr_ff, pc_ff, rd_addr;
+	logic[63:0] fetch_addr_ff, pc_ff;
 	int bytes_decoded_this_cycle, decode_return;
 
 	logic fq_enq, fq_deq;
@@ -159,7 +164,7 @@ import MicroOp::gen_micro_ops;
 	micro_op_t mp_out_mop;
 	/*verilator lint_on UNUSED*/
 
-	MPipeline mp(reset, clk, mp_in_ready, mp_in_mop, mp_busy, mp_out_ready, mp_out_mop ca_req_cmd, ca_req_addr, ca_req_data, ca_respcyc, ca_resp_data);
+	MPipeline mp(reset, clk, mp_in_ready, mp_in_mop, mp_busy, mp_out_ready, mp_out_mop, ca_req_cmd, ca_req_addr, ca_req_data, ca_respcyc, ca_resp_data);
 
 	always_comb begin
 
@@ -185,17 +190,17 @@ import MicroOp::gen_micro_ops;
 
 			load_reg_vals(reg_file_ff, mop);
 
-			if (mop_is_branch(mop)) begin
+			if (mopcode_is_branch(mop.opcode)) begin
 				if (mop_will_branch(mop)) begin
 					// branch taken, resteer and stall if no i-cache read is in progress,
 					// otherwise, just stall (do nothing)
 					if (rd_reqcyc_ff == 0 || rd_respcyc) begin
 						jmp_reset = 1;
-						jmp_entry = mop0.src0_val.val;
+						jmp_entry = mop.src0_val.val;
 					end
 					break;
 				end // branch not taken, fall through and skip the micro op
-			end else if (mop_is_mem(mop)) begin
+			end else if (mopcode_is_mem(mop.opcode)) begin
 				if (mp_in_ready) break; //memory pipe taken, stall 
 				if (mp_busy) break; //meory pipe busy, stall
 				mp_in_ready = 1; // send micro op to memory pipeline
@@ -225,12 +230,20 @@ import MicroOp::gen_micro_ops;
 		if (reset) begin
 			reg_file_ff <= 0;
 		end else begin 
-			int ii;
+			int ii = 0;
+			/* verilator lint_off UNUSED */
+			micro_op_t mop = 0;
+			/* verilator lint_on UNUSED */
 			for (ii = 0; ii < MOP_SCALE; ii++) begin
-				micro_op_t mop = ap_out_mops[ii];
+				mop = ap_out_mops[ii];
 				if(ap_out_readys[ii] && reg_in_file(mop.dst_id)) begin
 					reg_file_ff[reg_num(mop.dst_id)] <= mop.dst_val;
 				end
+			end
+
+			mop = mp_out_mop;
+			if (mp_out_ready && reg_in_file(mop.dst_id)) begin
+				reg_file_ff[reg_num(mop.dst_id)] <= mop.dst_val;
 			end
 		end
 	end
@@ -242,6 +255,9 @@ import MicroOp::gen_micro_ops;
 			if(ap_out_readys[ii]) begin
 				sb_clear_mask ^= make_sb_mask(ap_out_mops[ii].dst_id);			
 			end
+		end
+		if (mp_out_ready) begin
+			sb_clear_mask ^= make_sb_mask(mp_out_mop.dst_id);
 		end
 	end
 

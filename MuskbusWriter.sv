@@ -17,24 +17,21 @@ module MuskbusWriter (
 	always_ff @ (posedge clk) begin
 		if (reset) begin
 			state_ff <= idle;
+			offset_ff <= 0;
+			got_first_ack_ff <= 0;
 		end else begin
 			state_ff <= new_state_cb;
-		end
 
-		if (reset) begin
-			offset_ff <= 0;
-			got_first_ack_ff <= 0;
-		end
+			if (got_first_ack_ff) begin
+				offset_ff <= offset_ff + 64;
+			end
 
-		if (got_first_ack_ff) begin
-			offset_ff <= offset_ff + 64;
-		end
+			if (bus.reqack) got_first_ack_ff <= 1;
 
-		if (bus.reqack) got_first_ack_ff <= 1;
-
-		if (new_state_cb == idle) begin
-			offset_ff <= 0;
-			got_first_ack_ff <= 0;
+			if (new_state_cb == idle) begin
+				offset_ff <= 0;
+				got_first_ack_ff <= 0;
+			end
 		end
 	end
 

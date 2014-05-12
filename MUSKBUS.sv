@@ -17,6 +17,7 @@ endpackage
 interface Muskbus;
 /* verilator lint_on DECLFILENAME */
 
+/* verilator lint_off UNOPTFLAT */
 logic [63:0] req;
 logic [12:0] reqtag;
 logic [63:0] resp;
@@ -25,6 +26,7 @@ logic respcyc;
 logic reqack;
 logic respack;
 logic bid;
+/* verilator lint_on UNOPTFLAT */
 
 modport Top (
 	input bid
