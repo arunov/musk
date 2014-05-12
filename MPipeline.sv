@@ -34,6 +34,7 @@ import DecoderTypes::*;
 			case (mem_cmd_ff.opcode)
 				m_ld : ca_req_cmd = READ;
 				m_st : ca_req_cmd = WRITE;
+				m_clflush : ca_req_cmd = FLUSH;
 				default : begin
 					ca_req_cmd = IDLE;
 					$display("ERROR: unknown mem pipeline cmd: %x", mem_cmd_ff.opcode);

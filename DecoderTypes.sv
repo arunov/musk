@@ -53,6 +53,7 @@ typedef enum logic[7:0] {
 	m_lea,   // (base, index, res)
 	m_ld,    // (src_addr, rnil, dst)
 	m_st,    // (src, dst_addr, rnil)
+	m_clflush,   // (addr, rnil, rnil)
 	m_cpy,   // (src, rnil, dest)
 	m_cpy_f, // (src0, src1, dest) ; combine the value of src0 and flags of src1 into dest
 	m_add,   // (op0, op1, res) ; set flags
@@ -74,7 +75,6 @@ typedef enum logic[7:0] {
 	m_jne,   // (target, rflags, rnil)
 	m_jmp,   // (target, rnil, rnil) 
 	M_JMAX,  // Just a marker
-	m_syscall // very special
 } micro_opcode_t;
 
 typedef struct packed {

@@ -1,3 +1,5 @@
+`include "MacroUtils.sv"
+
 module MuskCore (
 	input[63:0] entry,
 	input reset,
@@ -15,30 +17,50 @@ import MuskCoreUtils::*;
 import MicroOp::MAX_MOP_CNT;
 import MicroOp::gen_micro_ops;
 
-import "DPI-C" function longint syscall_cse502(input longint rax, input longint rdi, input longint rsi, input longint rdx, input longint r10, input longint r8, input longint r9);
+/*** CACHES ***/
+
+	Muskbus mbuses[2];
+	MuskbusMux mm(reset, clk, mbuses, bus);
+
+	logic rd_reqcyc_ff, rd_respcyc;
+	logic [63:0] rd_addr;
+	logic [0:64*8-1] rd_data;
+
+	//MuskbusReader reader(reset, clk, mbuses[0], rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+	SetAssocReadCache reader(reset, clk, mbuses[0], rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+
+	CACHE::cache_cmd_t ca_req_cmd;
+	logic ca_respcyc;
+	logic [63:0] ca_req_addr, ca_req_data, ca_resp_data;
+
+	LineDCache cache(reset, clk, mbuses[1], ca_req_cmd, ca_req_addr, ca_req_data, ca_respcyc, ca_resp_data);
+
+/*** BRANCH ***/
+	logic soft_reset, jmp_reset;
+	logic[63:0] soft_entry, jmp_entry;
+
+	always_comb begin
+		soft_reset = reset ? 1 : jmp_reset;
+		soft_entry = reset ? entry : jmp_entry;
+	end
 
 /*** FETCH ***/
 
 	logic[63:0] fetch_addr_ff, pc_ff, rd_addr;
 	int bytes_decoded_this_cycle, decode_return;
 
-	logic rd_reqcyc_ff, rd_respcyc;
-	logic [0:64*8-1] rd_data;
-
 	logic fq_enq, fq_deq;
 	logic [0:64*8-1] fq_in_data;
 	logic [0:15*8-1] fq_out_data;
 	int fq_in_cnt, fq_out_cnt, fq_used_cnt, fq_empty_cnt;
 
-	//MuskbusReader reader(reset, clk, bus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
-	SetAssocReadCache reader(reset, clk, bus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
-	Queue #(64*8, 15*8, 64*8*4) fetch_queue(reset, clk, fq_enq, fq_in_cnt, fq_in_data, fq_deq, fq_out_cnt, fq_out_data, fq_used_cnt, fq_empty_cnt);
+	Queue #(64*8, 15*8, 64*8*4) fetch_queue(soft_reset, clk, fq_enq, fq_in_cnt, fq_in_data, fq_deq, fq_out_cnt, fq_out_data, fq_used_cnt, fq_empty_cnt);
 
 	always_ff @ (posedge clk) begin
-		if (reset) begin
-			fetch_addr_ff <= entry;
+		if (soft_reset) begin
+			fetch_addr_ff <= soft_entry;
 			rd_reqcyc_ff <= 0;
-			pc_ff <= entry;
+			pc_ff <= soft_entry;
 		end else begin
 			if (rd_respcyc) begin
 				fetch_addr_ff <= (fetch_addr_ff & ~63) + 64;
@@ -64,9 +86,9 @@ import "DPI-C" function longint syscall_cse502(input longint rax, input longint 
 
 /*** DECODE ***/
 
-	parameter SCALE_WAY_CNT = 1;
+	parameter MOP_SCALE = 2;
 	parameter DQ_IN_WIDTH = $bits(micro_op_t) * MAX_MOP_CNT;
-	parameter DQ_OUT_WIDTH = $bits(micro_op_t) * SCALE_WAY_CNT;
+	parameter DQ_OUT_WIDTH = $bits(micro_op_t) * MOP_SCALE;
 	parameter DQ_BUF_WIDTH = DQ_IN_WIDTH * 4;
 
 	logic [0:15*8-1] decode_bytes;
@@ -78,7 +100,7 @@ import "DPI-C" function longint syscall_cse502(input longint rax, input longint 
 	int dq_in_cnt, dq_out_cnt, dq_used_cnt, dq_empty_cnt;
 
 	Queue #(DQ_IN_WIDTH, DQ_OUT_WIDTH, DQ_BUF_WIDTH) decode_queue(
-		reset, clk, dq_enq, dq_in_cnt, dq_in_data, dq_deq, dq_out_cnt, dq_out_data, dq_used_cnt, dq_empty_cnt
+		soft_reset, clk, dq_enq, dq_in_cnt, dq_in_data, dq_deq, dq_out_cnt, dq_out_data, dq_used_cnt, dq_empty_cnt
 	);
 
 	always_comb begin
@@ -119,34 +141,77 @@ import "DPI-C" function longint syscall_cse502(input longint rax, input longint 
 /*** REGISTER READ AND DISPATCH ***/
 
 	reg_val_t[0:REG_FILE_SIZE-1] reg_file_ff;
-	logic[0:REG_FILE_SIZE-1] score_board_ff, sb_set_mask, sb_clear_mask;
+	logic[0:REG_FILE_SIZE-1] score_board_ff, new_score_board, sb_clear_mask;
 
-	logic ap0_in_ready;
-	micro_op_t ap0_in_mop;
-	logic ap0_busy;
-	logic ap0_out_ready;
+	// Since structure/2-dimensional arrays are unconditionally big endian, use big endian
+	// here to make sure wiring for the aps module array is correct.
+	logic[MOP_SCALE-1:0] ap_in_readys, ap_busys, ap_out_readys;
+	micro_op_t[MOP_SCALE-1:0] ap_in_mops;
 	/*verilator lint_off UNUSED*/
-	micro_op_t ap0_out_mop;
+	micro_op_t[MOP_SCALE-1:0] ap_out_mops;
 	/*verilator lint_on UNUSED*/
 
-	APipeline ap0(reset, clk, ap0_in_ready, ap0_in_mop, ap0_busy, ap0_out_ready, ap0_out_mop);
+	APipeline aps[MOP_SCALE-1:0](reset, clk, ap_in_readys, ap_in_mops, ap_busys, ap_out_readys, ap_out_mops);
+
+	logic mp_in_ready, mp_busy, mp_out_ready;
+	micro_op_t mp_in_mop;
+	/*verilator lint_off UNUSED*/
+	micro_op_t mp_out_mop;
+	/*verilator lint_on UNUSED*/
+
+	MPipeline mp(reset, clk, mp_in_ready, mp_in_mop, mp_busy, mp_out_ready, mp_out_mop ca_req_cmd, ca_req_addr, ca_req_data, ca_respcyc, ca_resp_data);
 
 	always_comb begin
-		ap0_in_mop = dq_out_data;
-		ap0_in_ready = dq_used_cnt >= DQ_OUT_WIDTH && !ap0_busy && score_board_check(score_board_ff, ap0_in_mop);
 
-		if (ap0_in_ready) begin
-			load_reg_vals(reg_file_ff, ap0_in_mop);
+		int ii = 0;
+		micro_op_t mop = 0;
+
+		jmp_reset = 0;
+		jmp_entry = 0;
+		dq_out_cnt = 0;
+		new_score_board = score_board_ff;
+
+		// Reset pipe line inputs.
+		ap_in_readys = 0;
+		ap_in_mops = 0;
+		mp_in_ready = 0;
+		mp_in_mop = 0;
+
+		for (ii = 0; ii < MOP_SCALE; ii++) begin
+			mop = `get_block(dq_out_data, ii, $bits(micro_op_t));
+
+			if (dq_used_cnt < $bits(micro_op_t) * (ii + 1)) break; //decoder buf empty, stall
+			if (!score_board_check(new_score_board, mop)) break; //register conflict, stall
+
+			load_reg_vals(reg_file_ff, mop);
+
+			if (mop_is_branch(mop)) begin
+				if (mop_will_branch(mop)) begin
+					// branch taken, resteer and stall if no i-cache read is in progress,
+					// otherwise, just stall (do nothing)
+					if (rd_reqcyc_ff == 0 || rd_respcyc) begin
+						jmp_reset = 1;
+						jmp_entry = mop0.src0_val.val;
+					end
+					break;
+				end // branch not taken, fall through and skip the micro op
+			end else if (mop_is_mem(mop)) begin
+				if (mp_in_ready) break; //memory pipe taken, stall 
+				if (mp_busy) break; //meory pipe busy, stall
+				mp_in_ready = 1; // send micro op to memory pipeline
+				mp_in_mop = mop;
+			end else begin
+				if (ap_busys[ii]) break; //pipe busy, stall, in fact, this will never happen for ALU pipes :)
+				ap_in_readys[ii] = 1;
+				ap_in_mops[ii] = mop;
+			end
+
+			dq_out_cnt += $bits(micro_op_t);
+			new_score_board ^= make_sb_mask(mop.dst_id);
 		end
 
-		if (ap0_in_ready) begin
-			sb_set_mask = make_sb_mask(ap0_in_mop.dst_id);
-		end else begin
-			sb_set_mask = 0;
-		end
-
-		dq_deq = ap0_in_ready;
-		dq_out_cnt = DQ_OUT_WIDTH;
+		// Will always dequeue, but dequeued amount can be 0.
+		dq_deq = 1;
 	end
 
 
@@ -159,16 +224,24 @@ import "DPI-C" function longint syscall_cse502(input longint rax, input longint 
 	always_ff @ (posedge clk) begin
 		if (reset) begin
 			reg_file_ff <= 0;
-		end else if(ap0_out_ready && reg_in_file(ap0_out_mop.dst_id)) begin
-			reg_file_ff[reg_num(ap0_out_mop.dst_id)] <= ap0_out_mop.dst_val;
+		end else begin 
+			int ii;
+			for (ii = 0; ii < MOP_SCALE; ii++) begin
+				micro_op_t mop = ap_out_mops[ii];
+				if(ap_out_readys[ii] && reg_in_file(mop.dst_id)) begin
+					reg_file_ff[reg_num(mop.dst_id)] <= mop.dst_val;
+				end
+			end
 		end
 	end
 
 	always_comb begin
-		if(ap0_out_ready) begin
-			sb_clear_mask = make_sb_mask(ap0_out_mop.dst_id);			
-		end else begin
-			sb_clear_mask = 0;
+		int ii;
+		sb_clear_mask = 0;
+		for (ii = 0; ii < MOP_SCALE; ii++) begin
+			if(ap_out_readys[ii]) begin
+				sb_clear_mask ^= make_sb_mask(ap_out_mops[ii].dst_id);			
+			end
 		end
 	end
 
@@ -178,7 +251,7 @@ import "DPI-C" function longint syscall_cse502(input longint rax, input longint 
 		if (reset) begin
 			score_board_ff <= 0;
 		end else begin
-			score_board_ff <= score_board_ff ^ sb_set_mask ^ sb_clear_mask;
+			score_board_ff <= new_score_board ^ sb_clear_mask;
 		end
 	end
 

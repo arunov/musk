@@ -145,6 +145,7 @@ import DecoderTypes::*;
 	`M(8E, jle, Jz)
 	`M(8F, jnle, Jz)
 
+	`G(AE, 15, _)
 	`M(AF, imul, Gv_Ev)
 `MAP_END
 
@@ -199,6 +200,9 @@ function automatic opcode_struct_t group_opcode_map(int group, logic[7:0] key, l
 	`GM(5, ??110???, push, Ev)
 
 	`GMC(11, ??000???, C7, mov, Ev_Iz)
+
+	`GM(15, 11111???, sfence, _)
+	`GM(15, ??111???, clflush, M)
 
 	endcase
 	return res;

@@ -206,7 +206,7 @@ function automatic int ins_``fun( \
 `ENDMOPFUN
 
 `MOPFUN(syscall)
-	mops[0] = make_mop(m_syscall, rnil, rnil, rnil);
+	mops[0] = make_mop(m_cpy, rsyscall, rnil, rax);
 	return 1;
 `ENDMOPFUN
 
@@ -327,6 +327,12 @@ function automatic int ins_``fun( \
 	return 0;
 `ENDMOPFUN
 
+`MOPFUN(clflush)
+	mops[0] = make_mop(m_lea, `R0, `RX0, rha);
+	mops[1] = make_mop(m_clflush, rha, rnil, rnil);
+	return 2;
+`ENDMOPFUN
+
 `MOPFUN(pop)
 	// See manual for when to change %rsp, this matters because %rsp can be the destination of pop.
 	if (ins.operand0.opd_type == opdt_register) begin
@@ -430,6 +436,7 @@ function automatic int gen_micro_ops(fat_instruction_t ins, output logic [0:$bit
 		`MOP(jne)
 		`MOP(jmp)
 		`MOP(mov)
+		`MOP(clflush)
 		`MOP(pop)
 		`MOP(push)
 		`MOP(callq)
