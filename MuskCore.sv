@@ -21,7 +21,7 @@ import MicroOp::gen_micro_ops;
 
 	/* verilator lint_off UNDRIVEN */
 	/* verilator lint_off UNUSED */
-	Muskbus dbus, ibus;
+	Muskbus ibus, dbus;
 	/* verilator lint_on UNUSED */
 	/* verilator lint_on UNDRIVEN */
 
@@ -228,7 +228,7 @@ import MicroOp::gen_micro_ops;
 
 	always_ff @ (posedge clk) begin
 		if (reset) begin
-			reg_file_ff <= 0;
+			reg_file_ff[reg_num(rsp)].val <= 64'h20000000; // initialize rsp
 		end else begin 
 			int ii = 0;
 			/* verilator lint_off UNUSED */

@@ -44,46 +44,54 @@ module MuskbusMux (
 		endcase 
 	end
 
-	always_comb begin
+/* NOTE: verilator will complain about circular logic and do strange things if signal updates are combined into a single always block */
 
+	always_comb begin
 		top.bid     = 0;
 		top.reqcyc  = 0;
 		top.reqtag  = 0;
 		top.req     = 0;
-		top.respack = 0;
-
-		bot0.respcyc = 0;
-		bot0.resp    = 0;
-		bot0.reqack  = 0;
-
-		bot1.respcyc = 0;
-		bot1.resp    = 0;
-		bot1.reqack  = 0;
-
 		if (new_user_cb == 0 && new_state_cb == busy) begin
-
 			top.bid     = bot0.bid;
 			top.reqcyc  = bot0.reqcyc;
 			top.reqtag  = bot0.reqtag;
 			top.req     = bot0.req;
-			top.respack = bot0.respack;
-
-			bot0.respcyc = top.respcyc;
-			bot0.resp    = top.resp;
-			bot0.reqack  = top.reqack;
-
 		end else if (new_user_cb == 1 && new_state_cb == busy) begin
-
 			top.bid     = bot1.bid;
 			top.reqcyc  = bot1.reqcyc;
 			top.reqtag  = bot1.reqtag;
 			top.req     = bot1.req;
-			top.respack = bot1.respack;
+		end
+	end
 
+	always_comb begin
+		top.respack = 0;
+		if (new_user_cb == 0 && new_state_cb == busy) begin
+			top.respack = bot0.respack;
+		end else if (new_user_cb == 1 && new_state_cb == busy) begin
+			top.respack = bot1.respack;
+		end
+	end
+
+	always_comb begin
+		bot0.respcyc = 0;
+		bot0.resp    = 0;
+		bot0.reqack  = 0;
+		if (new_user_cb == 0 && new_state_cb == busy) begin
+			bot0.respcyc = top.respcyc;
+			bot0.resp    = top.resp;
+			bot0.reqack  = top.reqack;
+		end
+	end
+
+	always_comb begin
+		bot1.respcyc = 0;
+		bot1.resp    = 0;
+		bot1.reqack  = 0;
+		if (new_user_cb == 1 && new_state_cb == busy) begin
 			bot1.respcyc = top.respcyc;
 			bot1.resp    = top.resp;
 			bot1.reqack  = top.reqack;
-
 		end
 	end
 

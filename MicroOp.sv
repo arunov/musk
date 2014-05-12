@@ -368,7 +368,7 @@ function automatic int ins_``fun( \
 	return 0;
 `ENDMOPFUN
 
-`MOPFUN(callq)
+`MOPFUN(call)
 	// push rip
 	mops[0] = make_mop(m_sub, rsp, rv8, rsp);
 	mops[1] = make_mop(m_st, rip, rsp, rnil);
@@ -388,7 +388,7 @@ function automatic int ins_``fun( \
 		mops[4] = make_mop(m_jmp, rha, rnil, rnil);
 		return 5;
 	end
-	$display("ERROR: callq: invalid operand type: %x", ins.operand0.opd_type); 
+	$display("ERROR: call: invalid operand type: %x", ins.operand0.opd_type); 
 	return 0;
 `ENDMOPFUN
 
@@ -439,10 +439,10 @@ function automatic int gen_micro_ops(fat_instruction_t ins, output logic [0:$bit
 		`MOP(clflush)
 		`MOP(pop)
 		`MOP(push)
-		`MOP(callq)
+		`MOP(call)
 		`MOP(retq)
 		default : begin
-			$display("ERROR: instuction not supported: %s", ins.opcode_struct.name);
+			$display("ERROR: instruction not supported: %s", ins.opcode_struct.name);
 			return 0;
 		end
 	endcase
