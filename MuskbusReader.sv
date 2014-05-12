@@ -11,6 +11,7 @@ module MuskbusReader (
 );
 
 	enum { idle, reading } state_ff, new_state_cb;
+	logic reqack_received_ff;
 	logic [0:64*8-1] buf_ff;
 	int offset_ff;
 
@@ -18,14 +19,19 @@ module MuskbusReader (
 		if (reset) begin
 			state_ff <= idle;
 			offset_ff <= 0;
+			reqack_received_ff <= 0;
 		end else begin
 			state_ff <= new_state_cb;
 			if (bus.respcyc) begin
 				buf_ff[offset_ff +: 64] <= bus.resp;
 				offset_ff <= offset_ff + 64;
 			end
+			if (bus.reqack) begin
+				reqack_received_ff <= 1;
+			end
 			if (new_state_cb == idle) begin
 				offset_ff <= 0;
+				reqack_received_ff <= 0;
 			end
 		end
 	end
@@ -46,9 +52,14 @@ module MuskbusReader (
 		respcyc = 0;
 		data = 0;
 
-		if (new_state_cb == reading) bus.bid = 1;
+		// The state_ff == reading condition is to let respack last for one
+		// more cycle after all data are read, such that system.cpp will pop
+		// the last item off the queue.
+		// Also, don't bid as soon as new_state_cb becomes reading, otherwise
+		// the reader could occupy the bus for too long.
+		if (state_ff == reading) bus.bid = 1;
 
-		if (state_ff == idle && new_state_cb == reading) begin
+		if (state_ff == reading && !reqack_received_ff) begin
 			bus.reqcyc = 1;
 		end
 

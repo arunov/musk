@@ -197,6 +197,8 @@ import MicroOp::gen_micro_ops;
 					if (rd_reqcyc_ff == 0 || rd_respcyc) begin
 						jmp_reset = 1;
 						jmp_entry = mop.src0_val.val;
+
+						$display("branch: %x", jmp_entry);
 					end
 					break;
 				end // branch not taken, fall through and skip the micro op
