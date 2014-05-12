@@ -1,9 +1,10 @@
-module MuskbusMux #(N = 2) (
+module MuskbusMux (
 	input reset,
 	input clk,
 	/* verilator lint_off UNDRIVEN */
 	/* verilator lint_off UNUSED */
-	Muskbus.Bottom bottoms[N],
+	Muskbus.Bottom bot0,
+	Muskbus.Bottom bot1,
 	Muskbus.Top top
 	/* verilator lint_on UNUSED */
 	/* verilator lint_off UNDRIVEN */
@@ -27,36 +28,71 @@ module MuskbusMux #(N = 2) (
 		new_user_cb = user_ff;
 		unique case (state_ff)
 			idle : begin
-				int k, ii;
-				for (k = 0; k < N; k++) begin
-					ii = (user_ff + 1 + k) % N;
-					if (bottoms[ii].bid) begin
-						new_state_cb = busy;
-						new_user_cb = ii;
-						break;
-					end
+				if (bot0.bid) begin 
+					new_state_cb = busy;
+					new_user_cb = 0;
+				end else if (bot1.bid) begin
+					new_state_cb = busy;
+					new_user_cb = 1;
 				end
 			end
 			busy : begin 
-				if (!bottoms[user_ff].bid) new_state_cb = idle;
+				if ((user_ff == 0 && !bot0.bid) || (user_ff == 1 && !bot1.bid)) begin
+					new_state_cb = idle;
+				end
 			end
 		endcase 
+	end
 
-		top.bid = bottoms[new_user_cb].bid;
-		top.reqcyc = bottoms[new_user_cb].reqcyc;
-		top.reqtag = bottoms[new_user_cb].reqtag;
-		top.req = bottoms[new_user_cb].req;
-		top.respack = bottoms[new_user_cb].respack;
+/* NOTE: verilator will complain about circular logic and do strange things if signal updates are combined into a single always block */
 
-		int k;
-		for (k = 0; k < N; k++) begin
-			bottoms[k].respcyc = 0;
-			bottoms[k].resp = 0;
-			bottoms[k].reqack = 0;
+	always_comb begin
+		top.bid     = 0;
+		top.reqcyc  = 0;
+		top.reqtag  = 0;
+		top.req     = 0;
+		if (new_user_cb == 0 && new_state_cb == busy) begin
+			top.bid     = bot0.bid;
+			top.reqcyc  = bot0.reqcyc;
+			top.reqtag  = bot0.reqtag;
+			top.req     = bot0.req;
+		end else if (new_user_cb == 1 && new_state_cb == busy) begin
+			top.bid     = bot1.bid;
+			top.reqcyc  = bot1.reqcyc;
+			top.reqtag  = bot1.reqtag;
+			top.req     = bot1.req;
 		end
-		bottoms[new_user_cb].respcyc = top.respcyc;
-		bottoms[new_user_cb].resp = top.resp;
-		bottoms[new_user_cb].reqack = top.reqack;
+	end
+
+	always_comb begin
+		top.respack = 0;
+		if (new_user_cb == 0 && new_state_cb == busy) begin
+			top.respack = bot0.respack;
+		end else if (new_user_cb == 1 && new_state_cb == busy) begin
+			top.respack = bot1.respack;
+		end
+	end
+
+	always_comb begin
+		bot0.respcyc = 0;
+		bot0.resp    = 0;
+		bot0.reqack  = 0;
+		if (new_user_cb == 0 && new_state_cb == busy) begin
+			bot0.respcyc = top.respcyc;
+			bot0.resp    = top.resp;
+			bot0.reqack  = top.reqack;
+		end
+	end
+
+	always_comb begin
+		bot1.respcyc = 0;
+		bot1.resp    = 0;
+		bot1.reqack  = 0;
+		if (new_user_cb == 1 && new_state_cb == busy) begin
+			bot1.respcyc = top.respcyc;
+			bot1.resp    = top.resp;
+			bot1.reqack  = top.reqack;
+		end
 	end
 
 endmodule

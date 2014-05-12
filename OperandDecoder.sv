@@ -339,6 +339,10 @@ function automatic int fun( \
 	return 1;
 `ENDDFUN
 
+`DFUN(M)
+	return handleM(ins.operand0, ins, modrm, index, opd_bytes);
+`ENDDFUN
+
 `DFUN(_)
 	return 0;
 `ENDDFUN
@@ -406,6 +410,7 @@ function automatic int decode_operands(
 		`D(rax_Iz)
 		`D(Jz)
 		`D(Jb)
+		`D(M)
 		`D(_)
 		default: begin 
 			$display("ERROR: opcode mode unsupported: %s", ins.opcode_struct.mode);

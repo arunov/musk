@@ -1,4 +1,3 @@
-/* verilator lint_off UNUSED */
 package MUSKBUS;
 
 parameter
@@ -17,6 +16,7 @@ endpackage
 interface Muskbus;
 /* verilator lint_on DECLFILENAME */
 
+/* verilator lint_off UNUSED */
 logic [63:0] req;
 logic [12:0] reqtag;
 logic [63:0] resp;
@@ -25,6 +25,7 @@ logic respcyc;
 logic reqack;
 logic respack;
 logic bid;
+/* verilator lint_on UNUSED */
 
 modport Top (
 	input bid
@@ -49,4 +50,3 @@ modport Bottom (
 );
 
 endinterface
-/* verilator lint_on UNUSED */

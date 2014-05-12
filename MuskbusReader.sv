@@ -17,21 +17,16 @@ module MuskbusReader (
 	always_ff @ (posedge clk) begin
 		if (reset) begin
 			state_ff <= idle;
+			offset_ff <= 0;
 		end else begin
 			state_ff <= new_state_cb;
-		end
-
-		if (reset) begin
-			offset_ff <= 0;
-		end
-
-		if (bus.respcyc) begin
-			buf_ff[offset_ff +: 64] <= bus.resp;
-			offset_ff <= offset_ff + 64;
-		end
-
-		if (new_state_cb == idle) begin
-			offset_ff <= 0;
+			if (bus.respcyc) begin
+				buf_ff[offset_ff +: 64] <= bus.resp;
+				offset_ff <= offset_ff + 64;
+			end
+			if (new_state_cb == idle) begin
+				offset_ff <= 0;
+			end
 		end
 	end
 
