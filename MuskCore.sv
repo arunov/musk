@@ -29,9 +29,11 @@ import "DPI-C" function longint syscall_cse502(input longint rax, input longint 
 	logic [0:64*8-1] fq_in_data;
 	logic [0:15*8-1] fq_out_data;
 	int fq_in_cnt, fq_out_cnt, fq_used_cnt, fq_empty_cnt;
+        /* verilator lint_off UNUSED */
         logic [0:63] write_data;
         logic writeEnable;
         logic cflush;
+        /* verilator lint_on UNUSED */
         assign write_data = 64'h0;
         assign writeEnable = 1'b0;
         assign cflush = 1'b0;

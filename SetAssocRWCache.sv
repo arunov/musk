@@ -81,28 +81,30 @@ module SetAssocRWCache (
 	endgenerate
 
 	// interface with memory
-	Muskbus mbus[2];
+	/* verilator lint_off UNDRIVEN */
+	Muskbus mbusrd, mbuswr;
+	/* verilator lint_on UNDRIVEN */
 
 	logic memrdreqcyc;
 	logic [63:0] memrdaddr;
 	logic memrdrespcyc;
 	logic [0:64*8-1] memrddata;
 
-	MuskbusReader memread(reset, clk, mbus[0], memrdreqcyc, memrdaddr, memrdrespcyc,
-		memrddata);
+	MuskbusReader memread(reset, clk, mbusrd, memrdreqcyc, memrdaddr,
+		memrdrespcyc, memrddata);
 
 	logic memwrreqcyc;
 	logic [63:0] memwraddr;
 	logic memwrrespcyc;
 	logic [0:64*8-1] memwrdata;
 
-	MuskbusWriter memwrite(reset, clk, mbus[1], memwrreqcyc, memwraddr,
+	MuskbusWriter memwrite(reset, clk, mbuswr, memwrreqcyc, memwraddr,
 		memwrrespcyc, memwrdata);
 
-	MuskbusMux memaccess(reset, clk, mbus[1:0], bus);
+	MuskbusMux memaccess(reset, clk, mbusrd, mbuswr, bus);
 
 	// the cache hardware
-	enum {idle, readMem, writeMem, readCache, writeCache} stateFf, stateCb;
+	enum {idle, readMem, writeMem, readCache, writeCache, writeDelay} stateFf, stateCb;
 
 	always_ff @ (posedge clk) begin
 		if(reset) begin
@@ -182,7 +184,7 @@ module SetAssocRWCache (
 		memrdreqcyc = 1'b0;
 		memwrreqcyc = 1'b0;
 
-		unique case(stateCb)
+		unique case(stateFf)
 			readCache: begin
 				if(cb < N) begin
 					read_data = readData[cb];
@@ -225,11 +227,14 @@ module SetAssocRWCache (
 					`validw(fb) = 1'b1;
 					`dirtyw(fb) = 1'b0;
 					writeMdEnable[fb] = 1'b1;
-					if(writeEnable) begin
-						stateCb = writeCache;
-					end else begin
-						stateCb = readCache;
-					end
+					stateCb = writeDelay;
+				end
+			end
+			writeDelay: begin
+				if(writeEnable) begin
+					stateCb = writeCache;
+				end else begin
+					stateCb = readCache;
 				end
 			end
 			writeMem: begin
