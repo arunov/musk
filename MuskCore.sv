@@ -31,8 +31,17 @@ import MicroOp::gen_micro_ops;
 	logic [63:0] rd_addr;
 	logic [0:64*8-1] rd_data;
 
-	MuskbusReader reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
-	// SetAssocReadCache reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+        /* verilator lint_off UNUSED */
+        logic [0:63] write_data;
+        logic writeEnable;
+        logic cflush;
+        /* verilator lint_on UNUSED */
+        assign write_data = 64'h0;
+        assign writeEnable = 1'b0;
+        assign cflush = 1'b0;
+	//MuskbusReader reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+	//SetAssocReadCache reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+	SetAssocRWCache reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data, write_data, writeEnable, cflush);
 
 	CACHE::cache_cmd_t ca_req_cmd;
 	logic ca_respcyc;
@@ -58,17 +67,6 @@ import MicroOp::gen_micro_ops;
 	logic [0:64*8-1] fq_in_data;
 	logic [0:15*8-1] fq_out_data;
 	int fq_in_cnt, fq_out_cnt, fq_used_cnt, fq_empty_cnt;
-        /* verilator lint_off UNUSED */
-        logic [0:63] write_data;
-        logic writeEnable;
-        logic cflush;
-        /* verilator lint_on UNUSED */
-        assign write_data = 64'h0;
-        assign writeEnable = 1'b0;
-        assign cflush = 1'b0;
-	//MuskbusReader reader(reset, clk, bus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
-	//SetAssocReadCache reader(reset, clk, bus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
-	SetAssocRWCache reader(reset, clk, bus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data, write_data, writeEnable, cflush);
 	Queue #(64*8, 15*8, 64*8*4) fetch_queue(soft_reset, clk, fq_enq, fq_in_cnt, fq_in_data, fq_deq, fq_out_cnt, fq_out_data, fq_used_cnt, fq_empty_cnt);
 
 	always_ff @ (posedge clk) begin
