@@ -64,7 +64,7 @@ function automatic reg_val_t compute_``opc(/* verilator lint_off UNUSED */ micro
 `COMFUN(m_sub)
 	logic [64:0] rw    = {1'b0, mop.src0_val.val} - {1'b0, mop.src1_val.val};
 	/*verilator lint_off UNUSED */
-	logic [4:0]  bcdrw = {1'b0, mop.src0_val.val[3:0]} + {1'b0, mop.src1_val.val[3:0]};
+	logic [4:0]  bcdrw = {1'b0, mop.src0_val.val[3:0]} - {1'b0, mop.src1_val.val[3:0]};
 	/*verilator lint_on UNUSED */
 	res.val = rw[63:0];
 	res.val = rw[63:0];
