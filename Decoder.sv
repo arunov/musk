@@ -83,9 +83,9 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, logic[63:0] pc_ff, outpu
 
 	// Check if opcode is invalid
 	if (ins.opcode_struct.name == 0) begin
-		`ins_write1("invalid opcode: ");
+		$write("invalid opcode: ");
 		`ins_short_print_bytes(ins.opcode_struct.opcode, 3);
-		`ins_write1("\n");
+		$write("\n");
 		return -1;
 	end
 
@@ -98,29 +98,19 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, logic[63:0] pc_ff, outpu
 
 
 	if (operand_byte_cnt < 0) begin
-		`ins_write2("invalid operands: %h: \n", `eget_bytes(dc_bytes, 0, 10));
+		$write("invalid operands: %h: \n", `eget_bytes(dc_bytes, 0, 10));
 		return -1;
 	end
 
 	`ADVANCE_DC_POINTER(operand_byte_cnt)
 
-`ifdef _INS_WRITE_
-
+/*
 	InstructionPrinter::prtInstr(ins);
-	`ins_write1("\t\t; ");
-
-	begin
-		logic[3:0] byte_index_prt;
-		/* verilator lint_off WIDTH */
-		byte_index_prt = byte_index;
-		/* verilator lint_on WIDTH */
-		`ins_write2("%d bytes decoded: ", byte_index_prt);
-	end
-
+	$write("\t\t; ");
+	$write("%d bytes decoded: ", byte_index);
 	`ins_short_print_bytes(dc_bytes_copy, byte_index);
-	`ins_write1("\n");
-`endif
-
+	$write("\n");
+*/
 	ins.rip_val = pc_ff + {32'b0, byte_index};
 	return byte_index;
 

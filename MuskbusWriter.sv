@@ -50,15 +50,15 @@ module MuskbusWriter (
 
 		respcyc = 0;
 
-		if (new_state_cb == writing) bus.bid = 1;
+		if (state_ff == writing) bus.bid = 1;
 
-		if (state_ff == idle && new_state_cb == writing) begin
+		if (state_ff == writing && !got_first_ack_ff) begin
 			bus.reqcyc = 1;
 			bus.reqtag = MUSKBUS::WRITE_MEM_TAG;
 			bus.req = addr;
 		end
 
-		if (new_state_cb == writing && got_first_ack_ff) begin
+		if (state_ff == writing && got_first_ack_ff && offset_ff < 64 * 8) begin
 			bus.reqcyc = 1;
 			bus.reqtag = MUSKBUS::WRITE_MEM_TAG;
 			bus.req = data[offset_ff +: 64];

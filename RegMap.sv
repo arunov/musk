@@ -141,6 +141,9 @@ function automatic reg_id_t reg_name2id(reg_name_t name);
 endfunction
 
 function automatic void print_reg_file(reg_val_t[0:REG_FILE_SIZE-1] reg_file);
+		/* verilator lint_off UNUSED */
+		reg_val_t fs = reg_file[16];
+		/* verilator lint_on UNUSED */
 		$display("RAX = %x", reg_file[0].val);
 		$display("RCX = %x", reg_file[1].val);
 		$display("RDX = %x", reg_file[2].val);
@@ -157,7 +160,7 @@ function automatic void print_reg_file(reg_val_t[0:REG_FILE_SIZE-1] reg_file);
 		$display("R13 = %x", reg_file[13].val);
 		$display("R14 = %x", reg_file[14].val);
 		$display("R15 = %x", reg_file[15].val);
-		$display("RFLAGS = %x", reg_file[16].val);
+		$display("cf:%b,zf:%b,of:%b,sf:%b,pf:%b,af:%b", fs.cf, fs.zf, fs.of, fs.sf, fs.pf, fs.af);
 		$display("RHA = %x", reg_file[17].val);
 		$display("RHB = %x", reg_file[18].val);
 		$display("RHC = %x", reg_file[19].val);

@@ -260,6 +260,10 @@ function automatic int ins_``fun( \
 	end
 `ENDMOPFUN
 
+`MOPFUN(jb)
+	return crack_jcc(m_jb, ins, mops);
+`ENDMOPFUN
+
 `MOPFUN(jnb)
 	return crack_jcc(m_jnb, ins, mops);
 `ENDMOPFUN
@@ -268,24 +272,24 @@ function automatic int ins_``fun( \
 	return crack_jcc(m_jz, ins, mops);
 `ENDMOPFUN
 
-`MOPFUN(jnle)
-	return crack_jcc(m_jnle, ins, mops);
-`ENDMOPFUN
-
-`MOPFUN(jnl)
-	return crack_jcc(m_jnl, ins, mops);
+`MOPFUN(jnz)
+	return crack_jcc(m_jnz, ins, mops);
 `ENDMOPFUN
 
 `MOPFUN(jl)
 	return crack_jcc(m_jl, ins, mops);
 `ENDMOPFUN
 
+`MOPFUN(jnl)
+	return crack_jcc(m_jnl, ins, mops);
+`ENDMOPFUN
+
 `MOPFUN(jle)
 	return crack_jcc(m_jle, ins, mops);
 `ENDMOPFUN
 
-`MOPFUN(jne)
-	return crack_jcc(m_jne, ins, mops);
+`MOPFUN(jnle)
+	return crack_jcc(m_jnle, ins, mops);
 `ENDMOPFUN
 
 `MOPFUN(jmp)
@@ -427,13 +431,14 @@ function automatic int gen_micro_ops(fat_instruction_t ins, output logic [0:$bit
 		`MOP(cmp)
 		`MOP(test)
 		`MOP(imul)
+		`MOP(jb)
 		`MOP(jnb)
 		`MOP(jz)
-		`MOP(jnle)
-		`MOP(jnl)
+		`MOP(jnz)
 		`MOP(jl)
+		`MOP(jnl)
 		`MOP(jle)
-		`MOP(jne)
+		`MOP(jnle)
 		`MOP(jmp)
 		`MOP(mov)
 		`MOP(clflush)

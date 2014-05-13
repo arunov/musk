@@ -99,9 +99,10 @@ function automatic logic mop_will_branch(
 	/* verilator lint_on UNUSED */
 
 	case (mop.opcode)
+		m_jb : return fs.cf == 1;
 		m_jnb : return fs.cf == 0;
 		m_jz : return fs.zf == 1;
-		m_jne : return fs.zf == 0;
+		m_jnz : return fs.zf == 0;
 		m_jl : return (fs.sf ^ fs.of) == 1;
 		m_jnl : return (fs.sf ^ fs.of) == 0;
 		m_jle : return ((fs.sf ^ fs.of) | fs.zf) == 1;

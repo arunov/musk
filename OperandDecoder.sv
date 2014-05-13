@@ -25,7 +25,7 @@ function automatic void fillFixedReg(
 	/* verilator lint_on UNUSED */
 );
 	operand.opd_type = opdt_register;
-	operand.base_reg = rex[REX_R] == 0 ? r0 : r1;
+	operand.base_reg = rex[REX_B] == 0 ? r0 : r1;
 endfunction
 
 function automatic int operand_size( /* verilator lint_off UNUSED */ fat_instruction_t ins /* verilator lint_on UNUSED */);

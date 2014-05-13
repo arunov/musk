@@ -45,7 +45,7 @@ import DecoderTypes::*;
 		end
 
 		if (mem_cmd_ff.opcode == m_st) begin
-			ca_req_data = mem_cmd_ff.src0_val.val;
+			ca_req_data = Utils::val_to_le_8bytes(mem_cmd_ff.src0_val.val);
 			ca_req_addr = mem_cmd_ff.src1_val.val;
 		end else begin
 			ca_req_addr = mem_cmd_ff.src0_val.val;
@@ -64,7 +64,7 @@ import DecoderTypes::*;
 
 	always_comb begin
 		mem_out_cb = mem_cmd_ff;
-		mem_out_cb.dst_val.val = ca_resp_data;
+		mem_out_cb.dst_val.val = Utils::le_8bytes_to_val(ca_resp_data);
 	end
 
 	assign out_ready = mem_returns_ff;

@@ -9,7 +9,9 @@ module LineDCache (
 	/* verilator lint_on UNUSED */
 	/* verilator lint_on UNDRIVEN */
 	input CACHE::cache_cmd_t req_cmd,
+	/* verilator lint_off UNUSED */
 	input logic [63:0] req_addr,
+	/* verilator lint_on UNUSED */
 	input logic [63:0] req_data,
 	output logic respcyc,
 	output logic [63:0] resp_data
@@ -42,7 +44,7 @@ import CACHE::*;
 	assign resp_data = `get_64(line_data_ff, req_addr[5:3]);
 
 	assign rd_reqcyc = req_cmd != IDLE && !respcyc && line_state_ff == empty;
-	assign rd_addr = req_addr;
+	assign rd_addr = { req_addr[63:6], 6'b0 };
 
 	assign wt_reqcyc = req_cmd != IDLE && !respcyc && line_state_ff == filled;
 	assign wt_addr = line_addr_ff;
@@ -57,7 +59,7 @@ import CACHE::*;
 			if (rd_respcyc) begin
 				line_state_ff <= filled;
 				line_data_ff <= rd_data;
-				line_addr_ff <= rd_addr;
+				line_addr_ff <= {rd_addr[63:6], 6'b0};
 			end else if (wt_respcyc) begin
 				line_state_ff <= empty;
 				line_data_ff <= 0;
