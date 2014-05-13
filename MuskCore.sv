@@ -39,15 +39,16 @@ import MicroOp::gen_micro_ops;
         assign write_data = 64'h0;
         assign writeEnable = 1'b0;
         assign cflush = 1'b0;
-	//MuskbusReader reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+	MuskbusReader reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
 	//SetAssocReadCache reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
-	SetAssocRWCache reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data, write_data, writeEnable, cflush);
+	//SetAssocRWCache reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data, write_data, writeEnable, cflush);
 
 	CACHE::cache_cmd_t ca_req_cmd;
 	logic ca_respcyc;
 	logic [63:0] ca_req_addr, ca_req_data, ca_resp_data;
 
-	LineDCache cache(reset, clk, dbus, ca_req_cmd, ca_req_addr, ca_req_data, ca_respcyc, ca_resp_data);
+	//LineDCache cache(reset, clk, dbus, ca_req_cmd, ca_req_addr, ca_req_data, ca_respcyc, ca_resp_data);
+	SetAssocDCache cache(reset, clk, dbus, ca_req_cmd, ca_req_addr, ca_req_data, ca_respcyc, ca_resp_data);
 
 /*** BRANCH ***/
 	logic soft_reset, jmp_reset;
