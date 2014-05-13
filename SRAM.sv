@@ -1,5 +1,6 @@
 module SRAM(
     input                   clk
+,	input                   reset
 ,   input   [logDepth-1:0]  readAddr
 ,   output  [   width-1:0]  readData
 ,   input   [logDepth-1:0]  writeAddr
@@ -24,7 +25,6 @@ module SRAM(
 	integer i;
 
 	always @ (posedge clk) begin
-
 		if (delay > 0)  begin
 			readpipe[0]     <= mem[readAddr];
 			readData        <= readpipe[delay-1];
@@ -41,4 +41,16 @@ module SRAM(
 			end
 		end
 	end
+
+	always_comb begin
+		if(reset) begin
+			int ri, rj;
+			for(ri = 0; ri < width; ri = ri+1) begin
+				for(rj = 0; rj < (1<<logDepth); rj = rj+1) begin
+					mem[ri][rj] = 1'b0;
+				end
+			end
+		end
+	end
+
 endmodule
