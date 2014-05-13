@@ -104,7 +104,8 @@ module SetAssocRWCache (
 	MuskbusMux memaccess(reset, clk, mbusrd, mbuswr, bus);
 
 	// the cache hardware
-	enum {idle, readMem, writeMem, readCache, writeCache, writeDelay} stateFf, stateCb;
+	enum {idle, readMem, writeMem, readCache, writeCache, writeDelay} stateFf,
+																		stateCb;
 
 	always_ff @ (posedge clk) begin
 		if(reset) begin
