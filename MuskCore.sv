@@ -119,7 +119,7 @@ import MicroOp::gen_micro_ops;
 			if (decode_return > 0) begin
 				bytes_decoded_this_cycle = decode_return;
 			end else begin
-				$display("skip one byte: %h", `get_byte(decode_bytes, 0));
+				// $display("skip one byte: %h", `get_byte(decode_bytes, 0));
 				bytes_decoded_this_cycle = 1;
 			end
 		end else begin
@@ -197,7 +197,7 @@ import MicroOp::gen_micro_ops;
 						jmp_reset = 1;
 						jmp_entry = mop.src0_val.val;
 
-						$display("branch: %x", jmp_entry);
+						// $display("branch: %x", jmp_entry);
 					end
 					break;
 				end // branch not taken, fall through and skip the micro op

@@ -83,9 +83,9 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, logic[63:0] pc_ff, outpu
 
 	// Check if opcode is invalid
 	if (ins.opcode_struct.name == 0) begin
-		$write("invalid opcode: ");
-		`ins_short_print_bytes(ins.opcode_struct.opcode, 3);
-		$write("\n");
+		// $write("invalid opcode: ");
+		// `ins_short_print_bytes(ins.opcode_struct.opcode, 3);
+		// $write("\n");
 		return -1;
 	end
 
@@ -98,7 +98,7 @@ function automatic int decode(logic[0:15*8-1] dc_bytes, logic[63:0] pc_ff, outpu
 
 
 	if (operand_byte_cnt < 0) begin
-		$write("invalid operands: %h: \n", `eget_bytes(dc_bytes, 0, 10));
+		// $write("invalid operands: %h: \n", `eget_bytes(dc_bytes, 0, 10));
 		return -1;
 	end
 

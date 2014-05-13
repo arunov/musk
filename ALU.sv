@@ -48,32 +48,43 @@ function automatic reg_val_t compute_``opc(/* verilator lint_off UNUSED */ micro
 `ENDCOMFUN
 
 `COMFUN(m_add)
-	logic [64:0] rw    = {1'b0, mop.src0_val.val} + {1'b0, mop.src1_val.val};
+	logic [63:0] v0 = mop.src0_val.val;
+	logic [63:0] v1 = mop.src1_val.val;
+
+	logic [64:0] unsigned_res = {1'b0, v0} + {1'b0, v1};
 	/*verilator lint_off UNUSED */
-	logic [4:0]  bcdrw = {1'b0, mop.src0_val.val[3:0]} + {1'b0, mop.src1_val.val[3:0]};
+	logic [64:0] signed_res = {v0[63], v0} + {v1[63], v1};
+	logic [4:0]  bcd_res = {1'b0, v0[3:0]} + {1'b0, v1[3:0]};
 	/*verilator lint_on UNUSED */
-	res.val = rw[63:0];
-	res.cf  = rw[64] == 1;
+
+	res.cf  = unsigned_res[64];
+	res.af  = bcd_res[4];
+	res.of  = signed_res[64] != signed_res[63];
+
+	res.val = unsigned_res[63:0];
 	res.zf  = res.val == 0;
 	res.sf  = res.val[63];
 	res.pf  = parity(res.val[7:0]);
-	res.af  = bcdrw[4] == 1;
-	res.of  = rw[63] != rw[64];
 `ENDCOMFUN
 
 `COMFUN(m_sub)
-	logic [64:0] rw    = {1'b0, mop.src0_val.val} - {1'b0, mop.src1_val.val};
+	logic [63:0] v0 = mop.src0_val.val;
+	logic [63:0] v1 = mop.src1_val.val;
+
+	logic [64:0] unsigned_res = {1'b0, v0} - {1'b0, v1};
 	/*verilator lint_off UNUSED */
-	logic [4:0]  bcdrw = {1'b0, mop.src0_val.val[3:0]} - {1'b0, mop.src1_val.val[3:0]};
+	logic [64:0] signed_res = {v0[63], v0} - {v1[63], v1};
+	logic [4:0]  bcd_res = {1'b0, v0[3:0]} - {1'b0, v1[3:0]};
 	/*verilator lint_on UNUSED */
-	res.val = rw[63:0];
-	res.val = rw[63:0];
-	res.cf  = rw[64] == 1;
+
+	res.cf  = unsigned_res[64];
+	res.af  = bcd_res[4];
+	res.of  = signed_res[64] != signed_res[63];
+
+	res.val = unsigned_res[63:0];
 	res.zf  = res.val == 0;
 	res.sf  = res.val[63];
 	res.pf  = parity(res.val[7:0]);
-	res.af  = bcdrw[4] == 1;
-	res.of  = rw[63] != rw[64];
 `ENDCOMFUN
 
 `COMFUN(m_and)
