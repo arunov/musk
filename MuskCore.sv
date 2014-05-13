@@ -128,7 +128,7 @@ import MicroOp::gen_micro_ops;
 			if (decode_return > 0) begin
 				bytes_decoded_this_cycle = decode_return;
 			end else begin
-				$display("skip one byte: %h", `get_byte(decode_bytes, 0));
+				// $display("skip one byte: %h", `get_byte(decode_bytes, 0));
 				bytes_decoded_this_cycle = 1;
 			end
 		end else begin
@@ -215,24 +215,10 @@ import MicroOp::gen_micro_ops;
 				if (mp_busy) break; //meory pipe busy, stall
 				mp_in_ready = 1; // send micro op to memory pipeline
 				mp_in_mop = mop;
-/*
-				if (mop.rip_val >= 'h401a84) begin
-					$display("###");
-					print_mop(mop);
-					print_reg_file(reg_file_ff);
-				end
-*/
 			end else begin
 				if (ap_busys[ii]) break; //pipe busy, stall, in fact, this will never happen for ALU pipes :)
 				ap_in_readys[ii] = 1;
 				ap_in_mops[ii] = mop;
-/*
-				if (mop.rip_val >= 'h401a84) begin
-					$display("###");
-					print_mop(mop);
-					print_reg_file(reg_file_ff);
-				end 
-*/
 			end
 
 			dq_out_cnt += $bits(micro_op_t);
@@ -262,22 +248,12 @@ import MicroOp::gen_micro_ops;
 				mop = ap_out_mops[ii];
 				if(ap_out_readys[ii] && reg_in_file(mop.dst_id)) begin
 					reg_file_ff[reg_num(mop.dst_id)] <= mop.dst_val;
-
-				//$display("val = %b", mop.dst_val);
-				//print_mop(mop);
-				//print_reg_file(reg_file_ff);
-
 				end
 			end
 
 			mop = mp_out_mop;
 			if (mp_out_ready && reg_in_file(mop.dst_id)) begin
 				reg_file_ff[reg_num(mop.dst_id)] <= mop.dst_val;
-
-				//$display("val = %b", mop.dst_val);
-				//print_mop(mop);
-				//print_reg_file(reg_file_ff);
-
 			end
 		end
 	end
