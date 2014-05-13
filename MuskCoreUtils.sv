@@ -81,7 +81,7 @@ function automatic void load_reg_vals(reg_val_t[0:REG_FILE_SIZE-1] reg_file, ino
 endfunction
 
 function automatic logic mopcode_is_mem(micro_opcode_t code);
-	return code == m_ld || code == m_st || code == m_clflush;
+	return code == m_ld || code == m_st || code == m_clflush || code == m_mnop;
 endfunction
 
 function automatic logic mopcode_is_branch(micro_opcode_t code);

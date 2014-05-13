@@ -51,15 +51,19 @@ import MicroOp::gen_micro_ops;
 
 /*** FETCH ***/
 
+	parameter DEC_SCALE = 2;
+
 	logic[63:0] fetch_addr_ff, pc_ff;
-	int bytes_decoded_this_cycle, decode_return;
+	int bytes_decoded_this_cycle;
 
 	logic fq_enq, fq_deq;
 	logic [0:64*8-1] fq_in_data;
-	logic [0:15*8-1] fq_out_data;
+	logic [0:15*8*DEC_SCALE-1] fq_out_data;
 	int fq_in_cnt, fq_out_cnt, fq_used_cnt, fq_empty_cnt;
 
-	Queue #(64*8, 15*8, 64*8*2) fetch_queue(soft_reset, clk, fq_enq, fq_in_cnt, fq_in_data, fq_deq, fq_out_cnt, fq_out_data, fq_used_cnt, fq_empty_cnt);
+	Queue #(64*8, 15*8*DEC_SCALE, 64*8*2) fetch_queue(
+		soft_reset, clk, fq_enq, fq_in_cnt, fq_in_data, fq_deq, fq_out_cnt, fq_out_data, fq_used_cnt, fq_empty_cnt
+	);
 
 	always_ff @ (posedge clk) begin
 		if (soft_reset) begin
@@ -91,13 +95,10 @@ import MicroOp::gen_micro_ops;
 
 /*** DECODE ***/
 
-	parameter MOP_SCALE = 1;//2;
-	parameter DQ_IN_WIDTH = $bits(micro_op_t) * MAX_MOP_CNT;
+	parameter MOP_SCALE = 2;
+	parameter DQ_IN_WIDTH = $bits(micro_op_t) * MAX_MOP_CNT * DEC_SCALE;
 	parameter DQ_OUT_WIDTH = $bits(micro_op_t) * MOP_SCALE;
 	parameter DQ_BUF_WIDTH = DQ_IN_WIDTH * 2;
-
-	logic [0:15*8-1] decode_bytes;
-	logic can_decode;
 
 	logic dq_enq, dq_deq;
 	logic [0:DQ_IN_WIDTH-1] dq_in_data;
@@ -109,37 +110,48 @@ import MicroOp::gen_micro_ops;
 	);
 
 	always_comb begin
-		fat_instruction_t fat_inst_cb = 0;
 
-		decode_bytes = fq_out_data;
-		can_decode = (fq_used_cnt >= 15 * 8) && (dq_empty_cnt >= DQ_IN_WIDTH);
+		int mops_made_this_cycle = 0;
+		logic[0:DQ_IN_WIDTH-1] mop_bits = 0;
 
-		if (can_decode) begin
-			decode_return = Decoder::decode(decode_bytes, pc_ff, fat_inst_cb);
-			if (decode_return > 0) begin
-				bytes_decoded_this_cycle = decode_return;
-			end else begin
-				// $display("skip one byte: %h", `get_byte(decode_bytes, 0));
-				bytes_decoded_this_cycle = 1;
+		bytes_decoded_this_cycle = 0;
+
+		if (dq_empty_cnt >= DQ_IN_WIDTH) begin
+			int ii = 0; 
+			for (ii = 0; ii < DEC_SCALE; ii++) begin
+				int decode_return = 0;
+				fat_instruction_t fat_inst_cb = 0;
+
+				if ((fq_used_cnt - bytes_decoded_this_cycle * 8) < (15 * 8)) break;
+
+				decode_return = Decoder::decode(
+					`pget_bytes(fq_out_data, bytes_decoded_this_cycle, 15), 
+					pc_ff + {32'b0, bytes_decoded_this_cycle}, 
+					fat_inst_cb
+				);
+
+				if (decode_return > 0) begin
+					int gen_mop_ret = 0;
+					logic[0:MAX_MOP_CNT*$bits(micro_op_t)-1] sub_mop_bits = 0;
+
+					bytes_decoded_this_cycle += decode_return;
+
+					gen_mop_ret = gen_micro_ops(fat_inst_cb, sub_mop_bits);
+					`pget_blocks(mop_bits, mops_made_this_cycle, MAX_MOP_CNT, $bits(micro_op_t)) = sub_mop_bits;
+					mops_made_this_cycle += gen_mop_ret;
+				end else begin
+					// $display("skip one byte");
+					bytes_decoded_this_cycle += 1;
+				end
 			end
-		end else begin
-			decode_return = 0;
-			bytes_decoded_this_cycle = 0;
 		end
 
 		fq_deq = bytes_decoded_this_cycle > 0;
 		fq_out_cnt = bytes_decoded_this_cycle * 8;
 
-		if (decode_return > 0) begin
-			// Add micro ops to decode queue.
-			dq_enq = 1;
-			dq_in_cnt = gen_micro_ops(fat_inst_cb, dq_in_data) * $bits(micro_op_t);
-		end else begin
-			dq_enq = 0;
-			dq_in_cnt = 0;
-			dq_in_data = 0;
-		end
-
+		dq_enq = mops_made_this_cycle > 0;
+		dq_in_cnt = mops_made_this_cycle * $bits(micro_op_t);
+		dq_in_data = mop_bits;
 	end
 
 /*** REGISTER READ AND DISPATCH ***/
@@ -206,10 +218,14 @@ import MicroOp::gen_micro_ops;
 				if (mp_busy) break; //meory pipe busy, stall
 				mp_in_ready = 1; // send micro op to memory pipeline
 				mp_in_mop = mop;
+
+				// print_mop(mop);
 			end else begin
 				if (ap_busys[ii]) break; //pipe busy, stall, in fact, this will never happen for ALU pipes :)
 				ap_in_readys[ii] = 1;
 				ap_in_mops[ii] = mop;
+
+				// print_mop(mop);
 			end
 
 			dq_out_cnt += $bits(micro_op_t);

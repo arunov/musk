@@ -54,6 +54,7 @@ typedef enum logic[7:0] {
 	m_ld,    // (src_addr, rnil, dst)
 	m_st,    // (src, dst_addr, rnil)
 	m_clflush,   // (addr, rnil, rnil)
+	m_mnop,  // (rnil, rnil, dest)
 	m_cpy,   // (src, rnil, dest)
 	m_cpy_f, // (src0, src1, dest) ; combine the value of src0 and flags of src1 into dest
 	m_add,   // (op0, op1, res) ; set flags
@@ -100,6 +101,7 @@ function automatic mop_name_t mop_id2name(micro_opcode_t opc);
 		m_ld : return "ld";    // (src_addr, rnil, dst)
 		m_st : return "st";   // (src, dst_addr, rnil)
 		m_clflush : return "clflush";   // (addr, rnil, rnil)
+		m_mnop : return "mnop";
 		m_cpy : return "cpy";  // (src, rnil, dest)
 		m_cpy_f : return "cpy_f"; // (src0, src1, dest) ; combine the value of src0 and flags of src1 into dest
 		m_add : return "add";  // (op0, op1, res) ; set flags

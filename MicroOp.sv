@@ -206,8 +206,11 @@ function automatic int ins_``fun( \
 `ENDMOPFUN
 
 `MOPFUN(syscall)
-	mops[0] = make_mop(m_cpy, rsyscall, rnil, rax);
-	return 1;
+	mops[0] = make_mop(m_mnop, rnil, rnil, rhc);
+	mops[1] = make_mop(m_cpy, rsyscall, rnil, rax);
+	return 2;
+	// mops[0] = make_mop(m_cpy, rsyscall, rnil, rax);
+	// return 1;
 `ENDMOPFUN
 
 `MOPFUN(add)

@@ -18,23 +18,28 @@ import DecoderTypes::*;
 
 	logic mem_running_ff, mem_returns_ff;
 	micro_op_t mem_cmd_ff, mem_out_ff, mem_out_cb;
+	logic pipe_moving;
+
+	assign pipe_moving = ca_respcyc || ca_req_cmd == IDLE;
 
 	always_ff @ (posedge clk) begin
 		if (reset) begin
 			mem_running_ff <= 0;
 		end else begin
-			mem_running_ff <= in_ready || (mem_running_ff && !ca_respcyc);
+			mem_running_ff <= in_ready || !pipe_moving;
 		end
 
-		if (in_ready && (!mem_running_ff || ca_respcyc)) mem_cmd_ff <= in_mop;
+		if (in_ready && pipe_moving) mem_cmd_ff <= in_mop;
 	end
 
 	always_comb begin
 		if (mem_running_ff) begin
+			// $display("%s", mop_id2name(mem_cmd_ff.opcode));
 			case (mem_cmd_ff.opcode)
 				m_ld : ca_req_cmd = READ;
 				m_st : ca_req_cmd = WRITE;
 				m_clflush : ca_req_cmd = FLUSH;
+				m_mnop : ca_req_cmd = IDLE;
 				default : begin
 					ca_req_cmd = IDLE;
 					$display("ERROR: unknown mem pipeline cmd: %x", mem_cmd_ff.opcode);
@@ -57,7 +62,7 @@ import DecoderTypes::*;
 		if (reset) begin
 			mem_returns_ff <= 0;
 		end else begin
-			mem_returns_ff <= ca_respcyc;
+			mem_returns_ff <= ca_respcyc || (mem_running_ff && ca_req_cmd == IDLE);
 		end
 		mem_out_ff <= mem_out_cb;
 	end
@@ -69,5 +74,5 @@ import DecoderTypes::*;
 
 	assign out_ready = mem_returns_ff;
 	assign out_mop = mem_out_ff;
-	assign busy = mem_running_ff && !ca_respcyc;
+	assign busy = !pipe_moving;
 endmodule
