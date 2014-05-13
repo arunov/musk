@@ -1,13 +1,15 @@
-Musk decoder
-------------
+Musk processor
+--------------
 Authors: Yongming Shen (yoshen)
          Soujanya Shankaranarayana (soshankarana)
          Arun Olappamanna Vasudevan (aolappamanna)
 
-- <assembly> format is mostly AT&T with operand positions reversed and mnemonics from Intel manual
-- Output is in following format:
-<address>: <assembly>	; <bytes decoded>
-- To run program prog<n>, do:
-make prog n=<n>
-E.g.: make prog n=1
+2 way decode, 2 way micro-op dispatch super scalar processor with 4 way set
+associative instruction and data caches
+
+The number of ways can be configured with parameters:
+* DEC_SCALE (MuskCore.sv) for super scaling of decode
+* MOP_SCALE (MuskCore.sv) for super scaling of micro-op dispatch
+* N (SetAssocDCache.sv and SetAssocICache.sv) for number of ways in set
+  associative caches
 
