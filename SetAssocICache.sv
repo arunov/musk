@@ -12,7 +12,7 @@
  * (2) For data
  */
 
-module SetAssocDCache (
+module SetAssocICache (
 	input reset,
 	input clk,
 	/* verilator lint_off UNUSED */
@@ -20,13 +20,12 @@ module SetAssocDCache (
 	Muskbus.Top bus,
 	/* verilator lint_on UNDRIVEN */
 	/* verilator lint_on UNUSED */
-	input CACHE::cache_cmd_t req_cmd,
+	input logic reqcyc,
 	/* verilator lint_off UNUSED */
 	input logic [63:0] addr,
 	/*verilator lint_on UNUSED */
-	input logic [63:0] write_data,
 	output logic respcyc,
-	output logic [63:0] read_data
+	output logic [0:64*8-1] read_data
 );
 	parameter N = 4
 	, indexBits = 9; // ** Keep <= 9
@@ -46,8 +45,8 @@ module SetAssocDCache (
 	assign reqTag = addr[63:indexBits+6];
 	logic [indexBits-1:0] index;
 	assign index = addr[indexBits+5:6];
-	logic [2:0] offset;
-	assign offset = addr[5:3];
+	//logic [2:0] offset;
+	//assign offset = addr[5:3];
 	logic [63:0] addr_aligned;
 	assign addr_aligned = {reqTag, index, 6'h0};
 
@@ -81,31 +80,17 @@ module SetAssocDCache (
 	endgenerate
 
 	// interface with memory
-	/* verilator lint_off UNDRIVEN */
-	Muskbus mbusrd, mbuswr;
-	/* verilator lint_on UNDRIVEN */
 
 	logic memrdreqcyc;
 	logic [63:0] memrdaddr;
 	logic memrdrespcyc;
 	logic [0:64*8-1] memrddata;
 
-	MuskbusReader memread(reset, clk, mbusrd, memrdreqcyc, memrdaddr,
+	MuskbusReader memread(reset, clk, bus, memrdreqcyc, memrdaddr,
 		memrdrespcyc, memrddata);
 
-	logic memwrreqcyc;
-	logic [63:0] memwraddr;
-	logic memwrrespcyc;
-	logic [0:64*8-1] memwrdata;
-
-	MuskbusWriter memwrite(reset, clk, mbuswr, memwrreqcyc, memwraddr,
-		memwrrespcyc, memwrdata);
-
-	MuskbusMux memaccess(reset, clk, mbusrd, mbuswr, bus);
-
 	// the cache hardware
-	enum {idle, readMem, writeMem, flushMem, readCache, writeCache, flushCache,
-												cchWrDelay} stateFf, stateCb;
+	enum {idle, readMem, readCache, cchWrDelay} stateFf, stateCb;
 
 	always_ff @ (posedge clk) begin
 		if(reset) begin
@@ -115,13 +100,8 @@ module SetAssocDCache (
 			stateFf <= stateCb;
 			respcyc <= respcycCb;
 			rrcounter <= rrcounterCb;
-			if(stateFf == idle) begin
-				unique case(req_cmd)
-				CACHE::READ: stateFf <= readCache;
-				CACHE::WRITE: stateFf <= writeCache;
-				CACHE::FLUSH: stateFf <= flushCache;
-				default: stateFf <= idle;
-				endcase
+			if(stateFf == idle && reqcyc) begin
+				stateFf <= readCache;
 			end
 		end
 	end
@@ -150,33 +130,15 @@ module SetAssocDCache (
 		return rrcounter % N;
 	endfunction
 
-	function automatic void reqMemWrite(
-		/* verilator lint_off UNUSED */
-		int bnum
-		/* verilator lint_on UNUSED */
-	);
-		memwrreqcyc = 1'b1;
-		memwrdata = readData[bnum];
-		memwraddr = addr_aligned;
-	endfunction
-
 	function automatic void reqMemRead(int afb,
 		/* verilator lint_off UNUSED */
 		int aeb
 		/* verilator lint_on UNUSED */
 	);
 		if(afb >= N) begin
-			if(`dirtyr(aeb)) begin
-				//$display("eviction %d", aeb);
-				memwrreqcyc = 1'b1;
-				memwrdata = readData[aeb];
-				memwraddr = {`tagr(aeb), index, 6'h0};
-				stateCb = writeMem;
-			end else begin
-				`validw(aeb) = 1'b0;
-				writeMdEnable[aeb] = 1'b1;
-				stateCb = cchWrDelay;
-			end
+			`validw(aeb) = 1'b0;
+			writeMdEnable[aeb] = 1'b1;
+			stateCb = cchWrDelay;
 		end else begin
 			memrdreqcyc = 1'b1;
 			memrdaddr = addr_aligned;
@@ -203,32 +165,8 @@ module SetAssocDCache (
 		unique case(stateFf)
 			readCache: begin
 				if(cb < N) begin
-					/* verilator lint_off WIDTH */
-					read_data = readData[cb][(7-offset)*64+:64];
-					/* verilator lint_on WIDTH */
+					read_data = readData[cb];
 					if(respcyc == 1'b0) begin
-						respcycCb = 1'b1;
-					end
-					else begin
-						respcycCb = 1'b0;
-						stateCb = idle;
-					end
-				end
-				else begin
-					reqMemRead(fb, eb);
-				end
-			end
-			writeCache: begin
-				if(cb < N) begin
-					/* verilator lint_off WIDTH */
-					writeData[cb][(7-offset)*64+:64] = write_data;
-					/* verilator lint_on WIDTH */
-					`dirtyw(cb) = 1'b1;
-					if(respcyc == 1'b0) begin
-						/* verilator lint_off WIDTH */
-						writeDEnable[cb][(7-offset)+:1] = 1'b1;
-						/* verilator lint_on WIDTH */
-						writeMdEnable[cb] = 1'b1;
 						respcycCb = 1'b1;
 					end
 					else begin
@@ -253,45 +191,13 @@ module SetAssocDCache (
 				end
 			end
 			cchWrDelay: begin
-				unique case(req_cmd)
-				CACHE::READ: stateCb = readCache;
-				CACHE::WRITE: stateCb = writeCache;
-				CACHE::FLUSH: stateCb = flushCache;
-				default: stateCb = idle;
-				endcase
-			end
-			writeMem: begin
-				if(memwrrespcyc) begin
-					`validw(eb) = 1'b0;
-					writeMdEnable[eb] = 1'b1;
-					memwrreqcyc = 1'b0;
-					rrcounterCb = rrcounter + 1;
-					stateCb = cchWrDelay;
-				end
-			end
-			flushCache: begin
-				if(cb < N && `dirtyr(cb)) begin
-					reqMemWrite(cb);
-					stateCb = flushMem;
-				end else if(respcyc == 1'b0) begin
-					respcycCb = 1'b1;
-				end else begin
-					respcycCb = 1'b0;
-					stateCb = idle;
-				end
-			end
-			flushMem: begin
-				if(memwrrespcyc) begin
-					`dirtyw(cb) = 1'b0;
-					writeMdEnable[cb] = 1'b1;
-					memwrreqcyc = 1'b0;
-					stateCb = cchWrDelay;
+				if(reqcyc) begin
+					stateCb = readCache;
 				end
 			end
 		endcase
 		if(reset) begin
 			memrdreqcyc = 1'b0;
-			memwrreqcyc = 1'b0;
 		end
 
 		

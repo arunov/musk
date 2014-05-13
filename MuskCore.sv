@@ -39,9 +39,8 @@ import MicroOp::gen_micro_ops;
         assign write_data = 64'h0;
         assign writeEnable = 1'b0;
         assign cflush = 1'b0;
-	MuskbusReader reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
-	//SetAssocReadCache reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
-	//SetAssocRWCache reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data, write_data, writeEnable, cflush);
+	SetAssocICache reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
+	//MuskbusReader reader(reset, clk, ibus, rd_reqcyc_ff, rd_addr, rd_respcyc, rd_data);
 
 	CACHE::cache_cmd_t ca_req_cmd;
 	logic ca_respcyc;
