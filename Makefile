@@ -2,7 +2,7 @@ include PACKAGES.mk
 
 .PHONY: run clean submit
 
-RUNELF=$(PWD)/prog2 6
+RUNELF=$(PWD)/prog1
 
 TRACE=--trace
 

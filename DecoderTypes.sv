@@ -66,13 +66,14 @@ typedef enum logic[7:0] {
 	m_imul_l,    // (op0, op1, res); lower half of multiplication ; set flags
 	m_imul_h,    // (op0, op1, res); higher half of multiplication ; set flags
 	M_JMIN,  // Just a marker
+	m_jb,   // (target, rflags, rnil)
 	m_jnb,   // (target, rflags, rnil)
 	m_jz,    // (target, rflags, rnil)
-	m_jnle,  // (target, rflags, rnil)
-	m_jnl,   // (target, rflags, rnil)
+	m_jnz,   // (target, rflags, rnil)
 	m_jl,    // (target, rflags, rnil)
+	m_jnl,   // (target, rflags, rnil)
 	m_jle,   // (target, rflags, rnil)
-	m_jne,   // (target, rflags, rnil)
+	m_jnle,  // (target, rflags, rnil)
 	m_jmp,   // (target, rnil, rnil) 
 	M_JMAX  // Just a marker
 } micro_opcode_t;
@@ -91,11 +92,45 @@ typedef struct packed {
 	logic[63:0] rip_val;
 } micro_op_t;
 
+typedef logic [0:16*8-1] mop_name_t;
+
+function automatic mop_name_t mop_id2name(micro_opcode_t opc);
+	case (opc)
+		m_lea : return "lea";  // (base, index, res)
+		m_ld : return "ld";    // (src_addr, rnil, dst)
+		m_st : return "st";   // (src, dst_addr, rnil)
+		m_clflush : return "clflush";   // (addr, rnil, rnil)
+		m_cpy : return "cpy";  // (src, rnil, dest)
+		m_cpy_f : return "cpy_f"; // (src0, src1, dest) ; combine the value of src0 and flags of src1 into dest
+		m_add : return "add";  // (op0, op1, res) ; set flags
+		m_and : return "and";   // (op0, op1, res) ; set flags
+		m_or : return "or";   // (op0, op1, res) ; set flags
+		m_shl : return "shl";   // (op0, op1, res) ; set flags
+		m_shr : return "shr";   // (op0, op1, res) ; set flags
+		m_sub : return "sub";   // (op0, op1, res) ; set flags
+		m_xor : return "xor";   // (op0, op1, res) ; set flags
+		m_imul_l : return "imul_l";    // (op0, op1, res); lower half of multiplication ; set flags
+		m_imul_h : return "imul_h";    // (op0, op1, res); higher half of multiplication ; set flags
+		M_JMIN : return "M_JMIN"; // Just a marker
+		m_jb : return "jb";   // (target, rflags, rnil)
+		m_jnb : return "jnb";   // (target, rflags, rnil)
+		m_jz : return "jz";    // (target, rflags, rnil)
+		m_jnz : return "jnz";   // (target, rflags, rnil)
+		m_jl : return "jl";    // (target, rflags, rnil)
+		m_jnl : return "jnl";   // (target, rflags, rnil)
+		m_jle : return "jle";   // (target, rflags, rnil)
+		m_jnle : return "jnle";  // (target, rflags, rnil)
+		m_jmp : return "jmp";   // (target, rnil, rnil) 
+		M_JMAX : return "M_JMAX"; // Just a marker
+		default : return "unknown";
+	endcase
+endfunction
+
 function automatic void print_mop(micro_op_t mop);
-	$display("mop.opcode = %x", mop.opcode);
-	$display("mop.src0_id = %x", mop.src0_id);
-	$display("mop.src1_id = %x", mop.src1_id);
-	$display("mop.dst_id = %x", mop.dst_id);
+	$display("mop.opcode = %s", mop_id2name(mop.opcode));
+	$display("mop.src0_id = %s", reg_id2name(mop.src0_id));
+	$display("mop.src1_id = %s", reg_id2name(mop.src1_id));
+	$display("mop.dst_id = %s", reg_id2name(mop.dst_id));
 	$display("mop.src0_val = %x", mop.src0_val);
 	$display("mop.src1_val = %x", mop.src1_val);
 	$display("mop.dst_val = %x", mop.dst_val);

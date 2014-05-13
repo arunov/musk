@@ -38,7 +38,7 @@ function automatic reg_val_t compute_``opc(/* verilator lint_off UNUSED */ micro
 `ENDCOMFUN
 
 `COMFUN(m_cpy)
-	res.val = mop.src0_val.val;
+	res = mop.src0_val;
 `ENDCOMFUN
 
 `COMFUN(m_cpy_f)

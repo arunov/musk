@@ -59,7 +59,7 @@ import MicroOp::gen_micro_ops;
 	logic [0:15*8-1] fq_out_data;
 	int fq_in_cnt, fq_out_cnt, fq_used_cnt, fq_empty_cnt;
 
-	Queue #(64*8, 15*8, 64*8*4) fetch_queue(soft_reset, clk, fq_enq, fq_in_cnt, fq_in_data, fq_deq, fq_out_cnt, fq_out_data, fq_used_cnt, fq_empty_cnt);
+	Queue #(64*8, 15*8, 64*8*2) fetch_queue(soft_reset, clk, fq_enq, fq_in_cnt, fq_in_data, fq_deq, fq_out_cnt, fq_out_data, fq_used_cnt, fq_empty_cnt);
 
 	always_ff @ (posedge clk) begin
 		if (soft_reset) begin
@@ -91,10 +91,10 @@ import MicroOp::gen_micro_ops;
 
 /*** DECODE ***/
 
-	parameter MOP_SCALE = 2;
+	parameter MOP_SCALE = 1;//2;
 	parameter DQ_IN_WIDTH = $bits(micro_op_t) * MAX_MOP_CNT;
 	parameter DQ_OUT_WIDTH = $bits(micro_op_t) * MOP_SCALE;
-	parameter DQ_BUF_WIDTH = DQ_IN_WIDTH * 4;
+	parameter DQ_BUF_WIDTH = DQ_IN_WIDTH * 2;
 
 	logic [0:15*8-1] decode_bytes;
 	logic can_decode;
@@ -121,7 +121,6 @@ import MicroOp::gen_micro_ops;
 			end else begin
 				$display("skip one byte: %h", `get_byte(decode_bytes, 0));
 				bytes_decoded_this_cycle = 1;
-				// bytes_decoded_this_cycle = 0;
 			end
 		end else begin
 			decode_return = 0;
@@ -198,7 +197,7 @@ import MicroOp::gen_micro_ops;
 						jmp_reset = 1;
 						jmp_entry = mop.src0_val.val;
 
-						$display("branch: %x", jmp_entry);
+						// $display("branch: %x", jmp_entry);
 					end
 					break;
 				end // branch not taken, fall through and skip the micro op
@@ -207,10 +206,24 @@ import MicroOp::gen_micro_ops;
 				if (mp_busy) break; //meory pipe busy, stall
 				mp_in_ready = 1; // send micro op to memory pipeline
 				mp_in_mop = mop;
+/*
+				if (mop.rip_val >= 'h401a84) begin
+					$display("###");
+					print_mop(mop);
+					print_reg_file(reg_file_ff);
+				end
+*/
 			end else begin
 				if (ap_busys[ii]) break; //pipe busy, stall, in fact, this will never happen for ALU pipes :)
 				ap_in_readys[ii] = 1;
 				ap_in_mops[ii] = mop;
+/*
+				if (mop.rip_val >= 'h401a84) begin
+					$display("###");
+					print_mop(mop);
+					print_reg_file(reg_file_ff);
+				end 
+*/
 			end
 
 			dq_out_cnt += $bits(micro_op_t);
@@ -230,7 +243,7 @@ import MicroOp::gen_micro_ops;
 
 	always_ff @ (posedge clk) begin
 		if (reset) begin
-			reg_file_ff[reg_num(rsp)].val <= 64'h20000000; // initialize rsp
+			reg_file_ff[reg_num(rsp)].val <= 64'h7c00; // initialize rsp
 		end else begin 
 			int ii = 0;
 			/* verilator lint_off UNUSED */
@@ -240,12 +253,22 @@ import MicroOp::gen_micro_ops;
 				mop = ap_out_mops[ii];
 				if(ap_out_readys[ii] && reg_in_file(mop.dst_id)) begin
 					reg_file_ff[reg_num(mop.dst_id)] <= mop.dst_val;
+
+				//$display("val = %b", mop.dst_val);
+				//print_mop(mop);
+				//print_reg_file(reg_file_ff);
+
 				end
 			end
 
 			mop = mp_out_mop;
 			if (mp_out_ready && reg_in_file(mop.dst_id)) begin
 				reg_file_ff[reg_num(mop.dst_id)] <= mop.dst_val;
+
+				//$display("val = %b", mop.dst_val);
+				//print_mop(mop);
+				//print_reg_file(reg_file_ff);
+
 			end
 		end
 	end
