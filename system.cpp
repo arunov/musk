@@ -125,6 +125,10 @@ enum {
 };
 
 void System::tick(int clk) {
+	if (top->reset && top->reqcyc) {
+		cerr << "Sending a request on RESET. Ignoring..." << endl;
+		return;
+	}
 	if (!clk) {
 		if (top->reqcyc) {
 			top->reqack = dramsim->willAcceptTransaction(); // hack: blocks ACK if /any/ memory channel can't accept transaction
